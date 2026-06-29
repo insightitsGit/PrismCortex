@@ -8,6 +8,7 @@ deterministic render path.
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Optional
 
 from . import salience
@@ -36,6 +37,18 @@ def _confidence(weight: float) -> float:
     """Map reinforcement (edge/subject weight) to a 0..1 confidence. A fact stated once
     (weight 1.0) → 0.5; confirmed repeatedly → approaches 1.0."""
     return round(1.0 - 0.5 ** max(weight, 0.0), 3)
+
+
+_REL_STOP = {"is", "are", "the", "a", "an", "of", "for", "to", "at", "in", "on", "was",
+             "were", "be", "been", "has", "have", "had", "by", "with", "as", "now"}
+
+
+def _norm_relation(relation: str) -> str:
+    """Normalize a relation verb-phrase so conflict detection is robust to LLM wording
+    drift ("is scheduled for" vs "scheduled for" → same). Falls back to the raw lowercase
+    form if normalization empties it."""
+    toks = [t for t in re.findall(r"[a-z0-9]+", relation.lower()) if t not in _REL_STOP]
+    return " ".join(toks) or relation.strip().lower()
 from .ports import (
     EntityExtractor,
     GistProjector,
@@ -128,6 +141,18 @@ class Memory:
         outcome = DigestOutcome.REINFORCED if only_reinforce else DigestOutcome.COMMITTED
         return DigestResult(outcome=outcome, band=band, delta=delta, version=version)
 
+    def _prior_edge(self, src_id: str, relation: str):
+        """A current edge from src whose relation matches `relation` after normalization —
+        so 'is scheduled for' and 'scheduled for' resolve to the same fact (conflict
+        detection robust to LLM wording drift)."""
+        norm = _norm_relation(relation)
+        if hasattr(self.store, "current_edges_from"):
+            for e in self.store.current_edges_from(src_id):
+                if _norm_relation(e.relation) == norm:
+                    return e
+            return None
+        return self.store.current_edge(src_id, relation)
+
     def _calculate_delta(self, gist: ExtractedGist, context: Subgraph, band: Band, prov: Provenance):
         """Resolve the gist against current knowledge into graph mutations (in RAM)."""
         ops: list[DeltaOp] = []
@@ -162,7 +187,7 @@ class Memory:
             # values stay distinct ($40k != $55k); only subjects resolve by similarity
             dst_id = resolve(rel.dst, "value", allow_fuzzy=False)
             new_edge = Edge(id=_edge_id(src_id, rel.relation, dst_id), src=src_id, dst=dst_id, relation=rel.relation, band=band, provenance=prov)
-            prior = self.store.current_edge(src_id, rel.relation)
+            prior = self._prior_edge(src_id, rel.relation)
 
             if gist.is_correction:
                 if prior is not None:
@@ -264,14 +289,20 @@ class Memory:
         drained = self.staging.drain()
         if drained:
             resolved_ops: list[DeltaOp] = []
+            pending: dict[tuple, str] = {}  # (src, norm_relation) -> latest edge id this pass
             for delta, _reason in drained:
                 for op in delta.ops:
                     if op.operation is Operation.ASSIMILATE and op.edge is not None:
-                        prior = self.store.current_edge(op.edge.src, op.edge.relation)
-                        if prior is not None and prior.dst != op.edge.dst and prior.id != op.edge.id:
+                        key = (op.edge.src, _norm_relation(op.edge.relation))
+                        prior_id = pending.get(key)
+                        if prior_id is None:  # also resolve against the committed store
+                            prior = self._prior_edge(op.edge.src, op.edge.relation)
+                            prior_id = prior.id if prior else None
+                        pending[key] = op.edge.id
+                        if prior_id and prior_id != op.edge.id:
                             resolved_ops.append(DeltaOp(
                                 operation=Operation.ACCOMMODATE, edge=op.edge,
-                                target_id=prior.id, reason="consolidated conflict",
+                                target_id=prior_id, reason="consolidated conflict",
                             ))
                             continue
                     resolved_ops.append(op)

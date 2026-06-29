@@ -171,6 +171,34 @@ def test_sleep_resolves_staged_conflict_keeping_history():
     assert sum(1 for e in history if e.valid_to is not None) == 1  # old value retained, invalidated
 
 
+def test_sleep_resolves_both_staged_despite_relation_wording():
+    """The adversarial fix: two conflicting facts staged together, with *different*
+    relation phrasings, must still be detected as one conflict and resolved."""
+    from prismcortex.engine import _norm_relation
+
+    assert _norm_relation("is scheduled for") == _norm_relation("scheduled for")
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_launch", label="launch", embedding=proj.embed("launch"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_march", label="march", embedding=proj.embed("march"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_june", label="june", embedding=proj.embed("june"))),
+    ]))
+    staging = ListStaging()
+    staging.stage(StateDelta(ops=[DeltaOp(operation=Operation.ASSIMILATE,
+        edge=Edge(id="e1", src="n_launch", dst="n_march", relation="is scheduled for"))]), "c1")
+    staging.stage(StateDelta(ops=[DeltaOp(operation=Operation.ASSIMILATE,
+        edge=Edge(id="e2", src="n_launch", dst="n_june", relation="scheduled for"))]), "c2")
+
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=staging)
+    mem.sleep()
+
+    current = [e for e in store.all_edges() if e.valid_to is None]
+    assert len(current) == 1 and current[0].dst == "n_june"   # latest wins across wording
+    assert sum(1 for e in store.all_edges() if e.valid_to is not None) == 1  # old retained
+
+
 def test_explain_returns_evidence_trail():
     store = InMemoryGraphStore()
     proj = HashingProjector()

@@ -100,6 +100,9 @@ class InMemoryGraphStore:
                 return e
         return None
 
+    def current_edges_from(self, src: str) -> list[Edge]:
+        return [e for e in self._edges.values() if e.is_current and e.src == src]
+
     def find_similar_node(self, embedding: list[float], threshold: float = 0.88) -> Optional[str]:
         """Entity resolution: the existing node whose embedding is closest to `embedding`,
         if above `threshold`. Lets a paraphrased subject ("the budget" vs "deploy budget")
