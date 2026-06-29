@@ -10,6 +10,7 @@ Env:  GEMINI_API_KEY (required for digest/recall)  ·  PRISMCORTEX_BACKEND=lite|
 """
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -18,8 +19,9 @@ from collections import deque
 from threading import Lock
 from typing import Optional
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from .engine import Memory
 
@@ -188,15 +190,36 @@ def get_memory() -> Memory:
 # --------------------------------------------------------------------------- #
 app = FastAPI(title="PrismCortex", version="0.1.0")
 
+# --- API-key auth (no key reaches memory unauthenticated) ---
+API_KEY = os.environ.get("PRISMCORTEX_API_KEY")
+_OPEN_PATHS = {"/health", "/docs", "/openapi.json", "/redoc", "/docs/oauth2-redirect"}
+if not API_KEY:
+    logger.warning(json.dumps({"event": "auth_disabled", "warn": "PRISMCORTEX_API_KEY unset — server is UNAUTHENTICATED (dev only)"}))
+
+
+def _bearer(auth: Optional[str]) -> Optional[str]:
+    if auth and auth.lower().startswith("bearer "):
+        return auth.split(" ", 1)[1]
+    return None
+
+
+@app.middleware("http")
+async def _auth(request: Request, call_next):
+    if API_KEY and request.url.path not in _OPEN_PATHS:
+        token = request.headers.get("x-api-key") or _bearer(request.headers.get("authorization"))
+        if not token or not hmac.compare_digest(token, API_KEY):
+            return JSONResponse({"detail": "invalid or missing API key"}, status_code=401)
+    return await call_next(request)
+
 
 class DigestBody(BaseModel):
-    text: str
-    source_id: Optional[str] = None
-    agent_id: Optional[str] = None
+    text: str = Field(max_length=100_000)
+    source_id: Optional[str] = Field(default=None, max_length=256)
+    agent_id: Optional[str] = Field(default=None, max_length=256)
 
 
 class RecallBody(BaseModel):
-    query: str
+    query: str = Field(max_length=8_000)
 
 
 @app.get("/health")
