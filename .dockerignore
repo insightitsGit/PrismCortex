@@ -1,0 +1,16 @@
+.git
+.gitignore
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.prismcortex_cache
+.prismcortex_data
+.prismcortex_blobs
+dist
+build
+.venv
+venv
+benchmarks/results
+*.db
+*.onnx

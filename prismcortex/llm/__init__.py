@@ -1,0 +1,1 @@
+"""LLM adapters (real Gemini)."""
