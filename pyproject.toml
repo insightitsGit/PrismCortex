@@ -14,6 +14,7 @@ keywords = ["llm", "memory", "agents", "knowledge-graph", "deterministic", "rag"
 dependencies = [
     "pydantic>=2.5",
     "numpy>=1.24",
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]
