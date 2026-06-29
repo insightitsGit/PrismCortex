@@ -18,6 +18,8 @@ from .models import (
     DigestOutcome,
     DigestResult,
     Edge,
+    Evidence,
+    Explanation,
     FAST_TRACK_BANDS,
     SKIP_BANDS,
     ExtractedGist,
@@ -28,6 +30,12 @@ from .models import (
     StateDelta,
     Subgraph,
 )
+
+
+def _confidence(weight: float) -> float:
+    """Map reinforcement (edge/subject weight) to a 0..1 confidence. A fact stated once
+    (weight 1.0) → 0.5; confirmed repeatedly → approaches 1.0."""
+    return round(1.0 - 0.5 ** max(weight, 0.0), 3)
 from .ports import (
     EntityExtractor,
     GistProjector,
@@ -71,6 +79,7 @@ class Memory:
         template_id: str = "render-v1",
         k: int = 8,
         resolve_threshold: float = 0.88,
+        max_facts: Optional[int] = None,
     ) -> None:
         self.projector = projector
         self.extractor = extractor
@@ -83,6 +92,7 @@ class Memory:
         self.template_id = template_id
         self.k = k
         self.resolve_threshold = resolve_threshold
+        self.max_facts = max_facts  # bound the active working set; None = unbounded
 
     # ------------------------------------------------------------------ write
     def digest(self, text: str, *, source_id: Optional[str] = None, agent_id: Optional[str] = None) -> DigestResult:
@@ -183,6 +193,34 @@ class Memory:
         return version
 
     # ------------------------------------------------------------------- read
+    def _evidence(self, subgraph: Subgraph) -> list[Evidence]:
+        """The audit trail behind an answer: each current fact + its source + confidence."""
+        id2label = {n.id: n.label for n in subgraph.nodes}
+        id2weight = {n.id: n.weight for n in subgraph.nodes}
+        out: list[Evidence] = []
+        for e in subgraph.edges:
+            if not e.is_current:
+                continue
+            w = id2weight.get(e.src, e.weight)
+            prov = e.provenance
+            out.append(Evidence(
+                fact=f"{id2label.get(e.src, e.src)} {e.relation} {id2label.get(e.dst, e.dst)}",
+                source_id=prov.source_id if prov else None,
+                recorded_at=prov.recorded_at if prov else e.recorded_at,
+                confirmations=w,
+                confidence=_confidence(w),
+            ))
+        return out
+
+    def _confidence_freshness(self, subgraph: Subgraph):
+        weights = {n.id: n.weight for n in subgraph.nodes}
+        cur = [e for e in subgraph.edges if e.is_current]
+        if not cur:
+            return 1.0, None
+        conf = round(sum(_confidence(weights.get(e.src, e.weight)) for e in cur) / len(cur), 3)
+        fresh = max((e.provenance.recorded_at if e.provenance else e.recorded_at) for e in cur)
+        return conf, fresh
+
     def recall(self, query: str) -> RecallResult:
         emb = self.projector.embed(query)
         version = self.store.version()
@@ -192,14 +230,28 @@ class Memory:
 
         node_ids = [n.id for n in subgraph.nodes]
         edge_ids = [e.id for e in subgraph.edges if e.is_current]
+        conf, fresh = self._confidence_freshness(subgraph)
+        common = dict(subgraph_hash=key, version=version.version, model_id=self.renderer.model_id,
+                      node_ids=node_ids, edge_ids=edge_ids, confidence=conf, freshness=fresh)
 
         cached = self.cache.get(ans_key)
         if cached is not None:
-            return RecallResult(answer=cached, cache_hit=True, subgraph_hash=key, version=version.version, model_id=self.renderer.model_id, node_ids=node_ids, edge_ids=edge_ids)
+            return RecallResult(answer=cached, cache_hit=True, **common)
 
         answer = self.renderer.render(query, subgraph)  # the one stochastic draw
         self.cache.put(ans_key, answer)                 # frozen → byte-identical hereafter
-        return RecallResult(answer=answer, cache_hit=False, subgraph_hash=key, version=version.version, model_id=self.renderer.model_id, node_ids=node_ids, edge_ids=edge_ids)
+        return RecallResult(answer=answer, cache_hit=False, **common)
+
+    def explain(self, query: str) -> Explanation:
+        """Why an answer is what it is — the exact facts, sources, and confidence behind it.
+        A vector store can return memories; only a provenance graph can return evidence."""
+        emb = self.projector.embed(query)
+        version = self.store.version()
+        subgraph = self.store.retrieve(emb, k=self.k)
+        key = content_address(query, subgraph, self.template_id, self.renderer.model_id)
+        conf, fresh = self._confidence_freshness(subgraph)
+        return Explanation(query=query, version=version.version, subgraph_hash=key,
+                           confidence=conf, freshness=fresh, evidence=self._evidence(subgraph))
 
     # ----------------------------------------------------------------- sleep
     def sleep(self) -> int:
@@ -226,4 +278,8 @@ class Memory:
             if resolved_ops:
                 self._commit(StateDelta(ops=resolved_ops))
         self.resonance.consolidate()  # discrete decay heartbeat → new version semantics
+        if self.max_facts and hasattr(self.store, "prune_to"):
+            # bound the active working set: soft-invalidate the coldest facts (kept for
+            # audit/time-travel, out of the recall path) so memory size plateaus.
+            self.store.prune_to(self.max_facts)
         return len(drained)

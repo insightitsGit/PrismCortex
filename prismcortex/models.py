@@ -184,3 +184,24 @@ class RecallResult(BaseModel):
     node_ids: list[str] = Field(default_factory=list)
     edge_ids: list[str] = Field(default_factory=list)
     provisional: bool = False    # answer touched staged (unconsolidated) knowledge
+    confidence: float = 1.0      # 0..1, from how reinforced the supporting facts are
+    freshness: Optional[datetime] = None  # most recent time a supporting fact was confirmed
+
+
+class Evidence(BaseModel):
+    """One supporting fact behind an answer — the audit trail a vector store can't give."""
+
+    fact: str                    # "deploy budget is $40,000"
+    source_id: Optional[str] = None
+    recorded_at: Optional[datetime] = None
+    confirmations: float = 1.0   # edge weight (how many times reinforced)
+    confidence: float = 1.0      # 0..1
+
+
+class Explanation(BaseModel):
+    query: str
+    version: int
+    subgraph_hash: str
+    confidence: float = 1.0
+    freshness: Optional[datetime] = None
+    evidence: list[Evidence] = Field(default_factory=list)

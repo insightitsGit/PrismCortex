@@ -20,6 +20,7 @@ def reference_memory(
     cache_path: Optional[str] = None,
     embedding_dim: int = 384,
     k: int = 8,
+    max_facts: Optional[int] = None,
     llm=None,
 ) -> Memory:
     """A fully wired Memory: reference adapters + the real Gemini client.
@@ -43,4 +44,5 @@ def reference_memory(
         mesh=InProcessMesh(),
         staging=ListStaging(),
         k=k,
+        max_facts=max_facts,
     )

@@ -166,6 +166,19 @@ class InMemoryGraphStore:
         self._version += 1
         return self.version()
 
+    def prune_to(self, max_current_edges: int) -> int:
+        """Bound the active working set: soft-invalidate the coldest (lowest-weight, then
+        oldest) current edges until at most `max_current_edges` remain. Invalidated facts
+        are retained (valid_to set) for audit/time-travel, just out of the recall path."""
+        current = [e for e in self._edges.values() if e.is_current]
+        if len(current) <= max_current_edges:
+            return 0
+        now = utcnow()
+        current.sort(key=lambda e: (e.weight, e.recorded_at))  # coldest first
+        for e in current[: len(current) - max_current_edges]:
+            e.valid_to = now
+        return len(current) - max_current_edges
+
     def _reinforce(self, target_id: Optional[str]) -> None:
         if not target_id:
             return

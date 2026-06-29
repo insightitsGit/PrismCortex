@@ -35,6 +35,19 @@ print(mem.recall("What's my deploy budget?").answer)        # → "$55,000"
 | Cost | re-extract context every call | salience-gated writes, cached reads |
 | Audit | grep the logs | every answer → exact facts + source events |
 
+## What you get that a vector store can't
+
+| Capability | What it does |
+|---|---|
+| **Explainability** (`/explain`) | Every answer returns its **evidence trail** — the exact facts, their source events, and confidence. A vector store returns memories; only a provenance graph returns *evidence*. |
+| **Confidence + freshness** | Each recall reports how reinforced its facts are (0–1) and when they were last confirmed. |
+| **Time-travel / audit** | Corrections invalidate but **retain** the old fact as a queryable bitemporal record (a paid feature in Mem0 OSS). |
+| **Bounded memory** | `sleep()` prunes the coldest facts to a cap — the active set **plateaus** instead of growing forever; pruned facts are kept for audit. |
+| **~12× smaller index** | 128-dim vectors vs the 1536–3072-dim default elsewhere; plus entity-dedup. |
+| **Sovereign** | Self-hosted, your data, offline-keyed — no third-party SaaS. |
+
+These are validated in `benchmarks/` (incl. a fair head-to-head vs Mem0 in `vs_mem0.py`).
+
 ## Determinism, honestly
 
 We do **not** claim "temperature 0 → identical output" — that's false for any shared

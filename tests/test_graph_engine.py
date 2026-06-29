@@ -21,10 +21,15 @@ from prismcortex.models import (
     Edge,
     Node,
     Operation,
+    Provenance,
     SKIP_BANDS,
     StateDelta,
     Subgraph,
 )
+
+
+class _R:  # minimal renderer stand-in for graph-only tests (no LLM is invoked here)
+    model_id = "test-model"
 from prismcortex import salience
 
 
@@ -164,6 +169,39 @@ def test_sleep_resolves_staged_conflict_keeping_history():
     assert current is not None and current.dst == "n_300"          # new value is current
     history = store.history("n_ttl", "is")
     assert sum(1 for e in history if e.valid_to is not None) == 1  # old value retained, invalidated
+
+
+def test_explain_returns_evidence_trail():
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_amin", label="amin", embedding=proj.embed("amin"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_40k", label="$40,000", embedding=proj.embed("$40,000"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e1", src="n_amin", dst="n_40k", relation="budget_is",
+                provenance=Provenance(source_id="msg-7"))),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    ex = mem.explain("what is the budget")
+    assert ex.evidence, "explain must return the supporting facts"
+    ev = ex.evidence[0]
+    assert "budget_is" in ev.fact and ev.source_id == "msg-7"   # traceable to its source
+    assert 0.0 <= ex.confidence <= 1.0 and ev.confidence >= 0.0
+
+
+def test_prune_to_bounds_active_set_but_keeps_history():
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    for i in range(10):
+        store.apply(StateDelta(ops=[
+            DeltaOp(operation=Operation.ASSIMILATE, node=Node(id=f"n{i}", label=f"e{i}", embedding=proj.embed(f"e{i}"))),
+            DeltaOp(operation=Operation.ASSIMILATE, node=Node(id=f"v{i}", label=f"x{i}", embedding=proj.embed(f"x{i}"))),
+            DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id=f"e_{i}", src=f"n{i}", dst=f"v{i}", relation="is")),
+        ]))
+    pruned = store.prune_to(4)
+    assert pruned == 6
+    assert sum(1 for e in store.all_edges() if e.valid_to is None) == 4   # active set bounded
+    assert sum(1 for e in store.all_edges() if e.valid_to is not None) == 6  # history retained
 
 
 def test_reinforce_raises_weight():

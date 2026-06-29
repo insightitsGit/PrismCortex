@@ -245,10 +245,19 @@ def recall(body: RecallBody):
         "cache_hit": res.cache_hit,
         "subgraph_hash": res.subgraph_hash,
         "version": res.version,
+        "confidence": res.confidence,
+        "freshness": res.freshness.isoformat() if res.freshness else None,
         "node_ids": res.node_ids,
         "edge_ids": res.edge_ids,
         "ms": round(ms, 2),
     }
+
+
+@app.post("/explain")
+def explain(body: RecallBody):
+    """The evidence trail behind an answer — facts, sources, confidence (audit feature)."""
+    mem = get_memory()
+    return mem.explain(body.query).model_dump(mode="json")
 
 
 @app.post("/sleep")
