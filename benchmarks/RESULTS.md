@@ -82,6 +82,35 @@ problem. Root cause: PrismLang's default **64-dim** projection crowds at scale. 
 shipped:** default projection dim → **128**, which restores recall to **0.97** at 3k facts
 with no latency cost. (256 gives no further gain.)
 
+## Adversarial probes (`benchmarks/adversarial_bench.py`, real Gemini)
+4 probes that try to break it: **3/4 passed.**
+- ✅ over-merge guard (Acme Corp ≠ Acme Health — fuzzy-resolution threshold is safe)
+- ✅ distractor precision (1 right of 6 similar)
+- ✅ multi-hop (person → project → database)
+- ❌ contradiction-under-context: in a shared graph it returned "I don't have that info"
+  (0 superseded). **In isolation the same case passes** (March superseded, June current) —
+  so the *mechanism* is correct; the failure is **extraction inconsistency as context
+  grows** (relation-verb / subject drift). A real finding: correctness depends on the LLM
+  extracting consistent triples, which is fragile. Fix direction: detect conflicts by
+  subject + value-kind, not exact relation string.
+
+## Head-to-head vs Mem0 OSS (`benchmarks/vs_mem0.py`, same workload, same Gemini)
+Scrupulously fair — and it corrected one of our own assumptions:
+- **Determinism on reads is a WASH.** Mem0's vector retrieval is *also* deterministic.
+  Our real edge is narrower: a deterministic *rendered answer* (cached, byte-identical, 0
+  extra model calls), not "determinism" in the abstract.
+- **Correction handling:** PrismCortex updated `40k → 55k`; **Mem0's top result stayed
+  `40k`** (didn't surface the corrected value). Real, but possibly config/phrasing
+  sensitive — Mem0 is far more mature overall.
+- **Time-travel / audit:** PrismCortex retains the superseded value as a queryable
+  bitemporal fact; **Mem0 OSS does temporal retrieval only as a paid Platform feature.**
+- **Fair to Mem0:** much more mature, bigger ecosystem, ~3 lines with OpenAI defaults
+  (the Gemini setup took several config fixes — embedder model, dims, Qdrant on Windows).
+
+**Takeaway:** the moat is **not** "determinism" (everyone's vector reads are deterministic).
+It's **deterministic rendered answers + bitemporal audit/time-travel + sovereignty** — a
+narrower, truer wedge.
+
 ## Honest caveats
 - **Determinism = replay-determinism** (6 first-renders, then 24 byte-identical replays),
   by design — not first-render token-determinism. The check is byte-equality, not

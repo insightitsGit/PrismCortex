@@ -29,6 +29,8 @@ gemini = ["google-genai>=0.3.0"]
 # The network-reachable memory service (for multi-container deployments / benchmarks).
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
 dev = ["pytest>=7", "google-genai>=0.3.0", "fastapi>=0.110", "uvicorn[standard]>=0.27", "httpx>=0.27"]
+# Competitive head-to-head (benchmarks/vs_mem0.py). Mem0 + Gemini config: see that file.
+bench = ["mem0ai>=2.0"]
 
 [project.urls]
 Homepage = "https://www.insightits.com/products/"
