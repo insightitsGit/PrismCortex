@@ -14,6 +14,28 @@ necessary, not sufficient.
 **Verdict:** strong *technology* (~8/10) with one defensible moat (deterministic +
 auditable memory); product-readiness early (~4/10); market validation 0/10 (untested).
 
+## Path to GA (enterprise-ready)
+
+**Done:**
+- [x] Robust conflict detection (relation normalization) + `sleep()` both-staged fix
+- [x] Right-to-be-forgotten (`/forget`) with audit tombstones + cache clear (GDPR)
+- [x] Conflict surfacing (`/conflicts`) — never silently serve a contested fact
+- [x] Explainability (`/explain`), confidence + freshness, bounded memory (pruning)
+- [x] Ed25519 license gate (forge-proof, offline)
+- [x] Server auth (API key) + input size limits
+- [x] Vectorized retrieval; recall holds **0.98 @ 10k facts** (128-dim)
+- [x] Adversarial 4/4; head-to-head vs Mem0; security posture documented (SECURITY.md)
+
+**Still required before calling it GA / signing a regulated customer:**
+- [ ] **Subject-level entity resolution under extraction drift** — best-effort today;
+      the deeper coref problem. (Mitigated: conflicts are surfaced, not hidden.)
+- [ ] **Professional pen-test / security audit** (human — not self-review)
+- [ ] **Sustained load test** on Azure with the hardened server (concurrency, mixed R/W,
+      error rates under load); real ANN index for 50k+
+- [ ] **Real-world messy-data validation** (not synthetic) + multi-tenant isolation
+- [ ] **Pin a dated model snapshot**; `pip-audit` + pinned transitive deps; observability
+- [ ] **Replace the demo license public key**; rotate keys
+
 ## Improvement plan (ranked by leverage)
 
 ### #1 — Real entity resolution  ← biggest robustness gap

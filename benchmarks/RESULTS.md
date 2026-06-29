@@ -82,6 +82,10 @@ problem. Root cause: PrismLang's default **64-dim** projection crowds at scale. 
 shipped:** default projection dim → **128**, which restores recall to **0.97** at 3k facts
 with no latency cost. (256 gives no further gain.)
 
+**GA-scale validation (128-dim):** recall *holds* as the graph grows — hit@8 = 1.00 @ 1k,
+0.975 @ 5k, **0.98 @ 10k facts (20k nodes)**, with retrieval p95 0.8 → 2.8 → 5.0 ms. The
+vectorized O(N) scan is fine to ~10k; an ANN index (PrismRAG) is for 50k+.
+
 ## Adversarial probes (`benchmarks/adversarial_bench.py`, real Gemini)
 4 probes that try to break it: **3/4 passed.**
 - ✅ over-merge guard (Acme Corp ≠ Acme Health — fuzzy-resolution threshold is safe)
