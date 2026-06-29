@@ -4,7 +4,7 @@ The honest record of where this stands, what we learned proving it, and what mak
 genuinely good (not just working). Read alongside [DESIGN.md](DESIGN.md) and
 [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
 
-## Where it stands (2026-06-28)
+## Where it stands (2026-06-29)
 Tech is **real and works** — full-stack run on Azure (2 containers, real Gemini, 0 errors):
 determinism, reconsolidation/time-travel, salience-gated cost, memory plateau all PASS.
 That proves the *mechanism*, on a *friendly workload we designed*. It does **not** prove
@@ -13,6 +13,10 @@ necessary, not sufficient.
 
 **Verdict:** strong *technology* (~8/10) with one defensible moat (deterministic +
 auditable memory); product-readiness early (~4/10); market validation 0/10 (untested).
+
+**Positioning:** sell as **compliance-grade agent memory** (audit + replay + sovereignty),
+not as a generic “better RAG / better Mem0.” The wedge is regulated buyers (finance,
+health, legal, insurance) who cannot ship append-only chat logs or third-party SaaS memory.
 
 ## Path to GA (enterprise-ready)
 
@@ -36,6 +40,136 @@ auditable memory); product-readiness early (~4/10); market validation 0/10 (unte
 - [ ] **Pin a dated model snapshot**; `pip-audit` + pinned transitive deps; observability
 - [ ] **Replace the demo license public key**; rotate keys
 
+---
+
+## Enterprise GA plan (phased)
+
+Phased execution order: **robustness → isolation → scale → compliance packaging →
+productized differentiators → GTM**. Do not add net-new engine features until Phase 1–2
+are measurably green on messy data.
+
+### Phase 1 — Robustness on messy real-world data (highest leverage)
+
+**Goal:** survive production chat, not just designed benchmarks.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| Embedding-based entity merge (subjects) | partial | `find_similar_node` + threshold; extend alias table |
+| Value nodes stay distinct | done | no fuzzy merge on `kind=value` |
+| Relation normalization | done | `_norm_relation` for conflict detection |
+| Entity alias / canonical subject IDs | todo | map “the budget” → same subject node |
+| Extraction drift hardening | todo | schema-constrained Gemini output + validation |
+| Silent conflict → staging → `sleep()` | done | validated in Azure v0.2 |
+| Human-in-the-loop for ambiguous merges | todo | API flag + conflict inbox (Phase 5) |
+| Messy-data benchmark suite | todo | redacted real transcripts; multi-hop; partial corrections |
+
+**Exit criteria:** adversarial + messy-data suites pass; duplicate-subject rate < 5% on
+pilot corpus; conflicts surfaced, never silently served.
+
+### Phase 2 — Multi-tenant isolation & governance
+
+**Goal:** one deployment, many agents/customers, hard boundaries.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| Per-tenant / per-agent namespace in graph + cache | todo | `tenant_id` on all store ops |
+| Cross-tenant retrieval impossible | todo | integration tests proving isolation |
+| RBAC on `/digest`, `/recall`, `/forget`, `/audit` | todo | scoped API keys or JWT claims |
+| Retention + legal hold policies | todo | policy engine over tombstones + cold storage |
+| Data residency hooks | todo | region-pinned PrismLib path / storage backend |
+| GDPR erasure | done | `/forget` + cache clear + tombstones |
+
+**Exit criteria:** two tenants on one server cannot read each other’s facts; forget +
+audit policies documented for procurement.
+
+### Phase 3 — Scale & SLOs
+
+**Goal:** publish honest capacity numbers enterprise SRE teams can trust.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| Vectorized retrieval to ~10k facts | done | 0.98 hit@8 @ 128-dim |
+| Real ANN index (PrismRAG) for 50k+ | todo | swap reference linear scan |
+| Sustained mixed R/W load test | todo | Azure: concurrency, p99, error rate |
+| Write-path backpressure | todo | queue or 429 when digest backlog high |
+| Capacity guide | todo | “X facts, Y QPS, Z vCPU” doc in RESULTS.md |
+| Horizontal read scaling story | todo | read replicas or cache tier (design doc) |
+
+**Exit criteria:** p99 recall < 50 ms @ 50k facts (cached); digest p99 documented;
+zero data loss under concurrent writes test.
+
+### Phase 4 — Security & compliance packaging
+
+**Goal:** pass procurement, not just engineering review.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| API key auth + input limits | done | server.py |
+| Ed25519 offline license | done | licensing.py |
+| `pip-audit` clean | done | benchmarks/results/pip_audit.txt |
+| Replace demo license public key | todo | operator keypair + runbook |
+| Model `@epoch` pin | done | PRISMCORTEX_MODEL + cache invalidation |
+| SBOM + pinned transitive deps per release | todo | lockfile + CI artifact |
+| Rate limiting | todo | proxy doc + optional in-app middleware |
+| Prompt-injection hardening | todo | structured extraction; system/user separation |
+| Third-party pen-test | todo | external vendor report |
+| SOC 2 / ISO roadmap | todo | one-pager for sales (even “in progress”) |
+
+**Exit criteria:** pen-test findings remediated or accepted with compensating controls;
+SECURITY.md matches shipped behavior.
+
+### Phase 5 — Operational observability
+
+**Goal:** regulated ops can run and debug this without reading source.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| `/metrics` + structured JSON logs | done | server.py |
+| OpenTelemetry traces | todo | digest → extract → commit → recall spans |
+| Dashboards | todo | cache hit rate, staged backlog, conflict count, version churn |
+| Alerts | todo | sleep backlog growth, extraction failure rate |
+| Model epoch governance UI/workflow | todo | bump epoch → invalidate cache (documented ops runbook) |
+
+**Exit criteria:** on-call can diagnose “wrong answer” from traces + `/explain` in < 15 min.
+
+### Phase 6 — Productize differentiators (commercial tier)
+
+**Goal:** the demo *is* the product for enterprise buyers.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| Explain API | done | `/explain` — evidence trail |
+| Conflict API | done | `/conflicts` |
+| Time-travel / audit API | partial | bitemporal graph; needs `/audit` UX |
+| Audit console (time-travel UI) | todo | “what did we believe on date X?” |
+| Conflict inbox UI | todo | human resolve → commit |
+| Replay certificate export | todo | hash(subgraph@v) + frozen render proof |
+
+**Exit criteria:** 15-minute demo: ingest → correct → time-travel → explain → replay.
+
+### Phase 7 — Competitive proof & GTM
+
+**Goal:** one regulated pilot before more features.
+
+| Item | Status | Deliverable |
+|---|---|---|
+| Head-to-head vs Mem0 | partial | benchmarks/vs_mem0.py |
+| Head-to-head vs Zep | todo | same workload script |
+| Correctness metrics separate from determinism | todo | always report both in RESULTS.md |
+| 3–5 regulated prospect demos | todo | finance / health / legal |
+| Annual site license + SLA package | todo | DESIGN.md §7 commercial wrapper |
+
+**Exit criteria:** at least one “I’d pilot this” from a regulated prospect; published
+comparison showing audit + replay advantage (not just latency).
+
+### Explicitly deferred (do not build yet)
+
+- Hosted SaaS tier (contradicts sovereignty pitch for core buyer)
+- First-render token determinism without sovereign tier (T5) as default claim
+- Chasing generic dev-tool market on “remember stuff” alone
+
+---
+
 ## Improvement plan (ranked by leverage)
 
 ### #1 — Real entity resolution  ← biggest robustness gap
@@ -43,15 +177,13 @@ Exact-label match is brittle. We watched *"production deploy budget"* vs *"deplo
 silently split into two facts. Real chat is full of this ("the budget", "our Q3 spend").
 **Fix:** resolve incoming entities against the graph by **embedding similarity** (merge
 above a conservative threshold), keep **value** nodes (`$40k` vs `$55k`) distinct, route
-the genuinely ambiguous to `sleep()`. This decides whether it survives production data.
+the genuinely ambiguous to `sleep()`. **v0.2 landed embedding merge + unit tests; still
+need alias/canonical IDs and messy-data validation.**
 
-### #2 — Build the part that's actually novel (and currently untested)
-Every benchmark showed `staged=0`. The **two-speed memory + `sleep()` conflict resolution**
-— the differentiated, patent-worthy piece — never fired; reference `sleep()` just merges.
-**Fix:** real consolidation — a *silent* conflict (new value, not flagged "correction")
-goes to the labile buffer; `sleep()` resolves it (invalidate old, keep newest current,
-history retained). #1 and #2 are one investment paying twice: fix the weakest path *and*
-build the most novel one.
+### #2 — Two-speed memory + `sleep()` consolidation
+The differentiated, patent-worthy piece. **v0.2 validated end-to-end on Azure** (silent
+conflict → labile buffer → `sleep()` → accommodate, history retained). Keep stress-testing
+under real Gemini extraction drift.
 
 ### #3 — Test where it's hard + head-to-head
 - **Scale:** 10k+ facts → measure retrieval **precision/recall**, not just determinism
