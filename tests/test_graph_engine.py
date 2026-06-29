@@ -232,6 +232,43 @@ def test_prune_to_bounds_active_set_but_keeps_history():
     assert sum(1 for e in store.all_edges() if e.valid_to is not None) == 6  # history retained
 
 
+def test_forget_erases_facts_clears_cache_keeps_tombstone():
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    src = Provenance(source_id="msg-1")
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_a", label="amin", embedding=proj.embed("amin"), provenance=src)),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_40", label="$40k", embedding=proj.embed("$40k"), provenance=src)),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e1", src="n_a", dst="n_40", relation="budget_is", provenance=src)),
+    ]))
+    cache = DurableCache()
+    cache.put("ans:x", "amin's budget is $40k")  # a cached answer containing the content
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=cache, mesh=InProcessMesh(), staging=ListStaging())
+
+    receipt = mem.forget("msg-1")
+    assert receipt["edges_erased"] == 1 and receipt["nodes_erased"] == 2
+    assert store.all_edges() == []                 # content gone (GDPR erasure)
+    assert cache.get("ans:x") is None              # cached content cleared, can't linger
+    assert len(store.tombstones()) == 1            # but the erasure is auditable
+
+
+def test_conflicts_surfaces_contested_facts():
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_b", label="budget", embedding=proj.embed("budget"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_40", label="40k", embedding=proj.embed("40k"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_50", label="50k", embedding=proj.embed("50k"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e1", src="n_b", dst="n_40", relation="is")),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e2", src="n_b", dst="n_50", relation="is")),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    c = mem.conflicts()
+    assert len(c) == 1 and set(c[0]["values"]) == {"40k", "50k"}  # contested, surfaced not hidden
+
+
 def test_reinforce_raises_weight():
     store = InMemoryGraphStore()
     store.apply(StateDelta(ops=[DeltaOp(operation=Operation.ASSIMILATE, node=_node("amin"))]))

@@ -260,6 +260,33 @@ def explain(body: RecallBody):
     return mem.explain(body.query).model_dump(mode="json")
 
 
+class ForgetBody(BaseModel):
+    source_id: str
+
+
+@app.post("/forget")
+def forget(body: ForgetBody):
+    """Right-to-be-forgotten: erase all facts from a source + clear the answer cache."""
+    mem = get_memory()
+    receipt = mem.forget(body.source_id)
+    log_event(event="forget", **receipt)
+    return receipt
+
+
+@app.get("/conflicts")
+def conflicts():
+    """Contested facts the system would otherwise have to silently pick between."""
+    mem = get_memory()
+    return {"conflicts": mem.conflicts()}
+
+
+@app.get("/tombstones")
+def tombstones():
+    """Audit log of erasures (content not retained, only the receipts)."""
+    mem = get_memory()
+    return {"tombstones": mem.store.tombstones() if hasattr(mem.store, "tombstones") else []}
+
+
 @app.post("/sleep")
 def sleep():
     mem = get_memory()

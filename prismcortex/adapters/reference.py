@@ -71,6 +71,7 @@ class InMemoryGraphStore:
         self._emb_ids: list[str] = []
         self._emb_unit = None  # np.ndarray [n_nodes, dim]
         self._matrix_dirty = True
+        self._tombstones: list[dict] = []  # audit log of erasures (content not retained)
 
     def _ensure_matrix(self) -> None:
         if not self._matrix_dirty:
@@ -206,6 +207,31 @@ class InMemoryGraphStore:
     def all_nodes(self) -> list[Node]:
         return list(self._nodes.values())
 
+    def forget_source(self, source_id: str) -> dict:
+        """Right-to-be-forgotten: hard-remove every fact (and now-orphaned node) derived
+        from `source_id`. The *content* is erased (GDPR); only a tombstone receipt is kept
+        for audit ("N facts from source X erased at T")."""
+        edge_ids = [eid for eid, e in self._edges.items()
+                    if e.provenance and e.provenance.source_id == source_id]
+        for eid in edge_ids:
+            del self._edges[eid]
+        referenced = {e.src for e in self._edges.values()} | {e.dst for e in self._edges.values()}
+        node_ids = [nid for nid, n in self._nodes.items()
+                    if n.provenance and n.provenance.source_id == source_id and nid not in referenced]
+        for nid in node_ids:
+            del self._nodes[nid]
+        self._label_index = {n.label.strip().lower(): nid for nid, n in self._nodes.items()}
+        self._matrix_dirty = True
+        if edge_ids or node_ids:
+            self._version += 1
+        receipt = {"source_id": source_id, "edges_erased": len(edge_ids),
+                   "nodes_erased": len(node_ids), "at": utcnow().isoformat()}
+        self._tombstones.append(receipt)
+        return receipt
+
+    def tombstones(self) -> list[dict]:
+        return list(self._tombstones)
+
 
 # --------------------------------------------------------------------------- #
 # PrismResonance stand-in: synaptic weight + discrete consolidation.
@@ -262,6 +288,12 @@ class DurableCache:
         self._store[key] = value
         if self._path:  # durable: a frozen answer survives restart / eviction.
             self._path.write_text(json.dumps(self._store), encoding="utf-8")
+
+    def clear(self) -> None:
+        """Drop all cached answers — used on erasure so deleted content can't linger."""
+        self._store = {}
+        if self._path and self._path.exists():
+            self._path.write_text("{}", encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- #

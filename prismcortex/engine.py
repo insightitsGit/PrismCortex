@@ -267,6 +267,34 @@ class Memory:
         self.cache.put(ans_key, answer)                 # frozen → byte-identical hereafter
         return RecallResult(answer=answer, cache_hit=False, **common)
 
+    def forget(self, source_id: str) -> dict:
+        """Right-to-be-forgotten: erase every fact derived from `source_id` and clear the
+        answer cache (so deleted content can't linger in a cached response). Returns the
+        audit receipt; the erased content is gone, only the tombstone remains."""
+        receipt = self.store.forget_source(source_id)
+        if hasattr(self.cache, "clear"):
+            self.cache.clear()  # cached answers may contain the erased content
+        self.mesh.broadcast_version(self.store.version(), invalidated=[])
+        return receipt
+
+    def conflicts(self) -> list[dict]:
+        """Surface contested facts — subjects with >1 current value for the same
+        (normalized) relation — so the system never *silently* serves one of them."""
+        from collections import defaultdict
+
+        edges = self.store.all_edges() if hasattr(self.store, "all_edges") else []
+        labels = {n.id: n.label for n in (self.store.all_nodes() if hasattr(self.store, "all_nodes") else [])}
+        groups: dict[tuple, list] = defaultdict(list)
+        for e in edges:
+            if e.valid_to is None:
+                groups[(e.src, _norm_relation(e.relation))].append(e)
+        out = []
+        for (src, rel), es in groups.items():
+            if len({e.dst for e in es}) > 1:
+                out.append({"subject": labels.get(src, src), "relation": rel,
+                            "values": [labels.get(e.dst, e.dst) for e in es]})
+        return out
+
     def explain(self, query: str) -> Explanation:
         """Why an answer is what it is — the exact facts, sources, and confidence behind it.
         A vector store can return memories; only a provenance graph can return evidence."""

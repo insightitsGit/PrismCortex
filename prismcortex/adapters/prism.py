@@ -109,6 +109,7 @@ class PrismLibCache:
 
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
         self._CacheEntry = CacheEntry
+        self._db_path = db_path
         self._store = SQLiteStore(db_path=db_path)
 
     def get(self, key: str) -> Optional[str]:
@@ -124,6 +125,18 @@ class PrismLibCache:
             packet_id=key, query_text="", response=value,
             created_at=now, expires_at=now + self._TEN_YEARS,
         ))
+
+    def clear(self) -> None:
+        """Drop all cached answers (recreate the store) — used on erasure."""
+        from prism.cache import SQLiteStore
+
+        try:
+            self._store.close()
+        except Exception:  # noqa: BLE001
+            pass
+        if self._db_path != ":memory:" and os.path.exists(self._db_path):
+            os.remove(self._db_path)
+        self._store = SQLiteStore(db_path=self._db_path)
 
 
 def prism_memory(
