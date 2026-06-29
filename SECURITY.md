@@ -14,14 +14,21 @@ Honest account of what's hardened and what still needs work before an enterprise
 - **Erasure.** `/forget` hard-deletes a source's facts *and* clears the answer cache, so
   deleted content cannot linger; only an audit tombstone remains.
 - **No `eval`/`exec`/`pickle`** of untrusted input; no shell-out on request paths.
+- **Dependency audit.** `pip-audit` on PrismCortex's own dependency tree (pydantic, numpy,
+  cryptography, google-genai, fastapi, uvicorn, freshly resolved): **no known
+  vulnerabilities**. The image installs into a clean slim base, so that's what ships.
+  (Re-run `pip-audit -r` per release; audit your global env separately — unrelated tools
+  there will show CVEs that don't ship with PrismCortex.)
 
 ## Deploy guidance (operator responsibility)
 - **TLS:** terminate at a reverse proxy (nginx/Caddy/Azure App Gateway). The app speaks
   plain HTTP behind it.
 - **Network:** keep the memory service on a private network; expose only the proxy.
 - **Rotate** `PRISMCORTEX_API_KEY`; use a distinct key per client where possible.
-- **Pin the model:** set `PRISMCORTEX_MODEL` to a *dated* Gemini snapshot — a floating
-  alias silently changes outputs (the determinism guarantee is scoped to a pinned model).
+- **Pin the model:** dated `gemini-2.5-flash-NNN` snapshots aren't exposed for all keys,
+  so the practical pin is an **`@epoch`**: set `PRISMCORTEX_MODEL=gemini-2.5-flash@2026-06`.
+  The epoch is part of the cache key (bump it after a known model change to invalidate
+  frozen answers) but is stripped for the API call. A bare alias logs a warning.
 - **Replace the demo license public key** in `licensing.py` with your own keypair
   (`generate_keypair()`); keep the private key offline.
 
@@ -35,6 +42,6 @@ Honest account of what's hardened and what still needs work before an enterprise
   anything derived from memory.
 - **Multi-tenant isolation.** The current store is single-tenant; tenant isolation is
   the caller's responsibility until per-tenant namespacing lands.
-- **Dependency audit / SBOM.** Run `pip-audit` and pin transitive deps for a release.
+- **SBOM + pinned transitive deps** for a reproducible release (core tree audits clean today).
 
 Report vulnerabilities privately to the maintainer; do not open public issues for them.

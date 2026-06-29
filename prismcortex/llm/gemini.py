@@ -70,11 +70,24 @@ class GeminiClient:
         if not key:
             raise PrismCortexLLMError("Set GEMINI_API_KEY (or GOOGLE_API_KEY) to use the Gemini adapter.")
         self._client = genai.Client(api_key=key)
-        self._model = model or os.environ.get("PRISMCORTEX_MODEL", "gemini-2.5-flash")
+        # The spec may carry an "@epoch" you bump when Google updates a model in place
+        # under the same name. The epoch is part of the cache key (so it invalidates),
+        # but is stripped for the actual API call.
+        spec = model or os.environ.get("PRISMCORTEX_MODEL", "gemini-2.5-flash")
+        self._model_id = spec
+        self._model = spec.split("@", 1)[0]
+        if "@" not in spec and not re.search(r"-\d{3,}$", self._model):
+            import logging
+
+            logging.getLogger("prismcortex").warning(
+                "PRISMCORTEX_MODEL=%r is a floating alias with no pinned @epoch; determinism "
+                "is scoped to whatever Google serves under that name. Bump an @epoch "
+                "(e.g. 'gemini-2.5-flash@2026-06') after a known model change.", spec,
+            )
 
     @property
     def model_id(self) -> str:
-        return self._model
+        return self._model_id  # full spec incl @epoch → part of the content-address
 
     # -- low level --
     def _generate(self, prompt: str, *, json_mode: bool) -> str:
