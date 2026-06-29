@@ -65,6 +65,23 @@ Determinism PASS · reconsolidation PASS · **372 req/s** · 22 calls / 273 reca
 `lite` backend missed one retrieval (*"where is the DB hosted"*) that the `prism` backend
 answers correctly — the main reason to run the full stack.
 
+## Scale & retrieval quality (`benchmarks/scale_bench.py`, no LLM)
+Seeds N deterministic synthetic facts (real PrismLang embeddings) and measures retrieval
+hit@k + latency as the graph grows.
+
+| facts | nodes | hit@8 (dim 64) | hit@8 (dim 128) | retrieve p95 |
+|---|---|---|---|---|
+| 200 | 400 | 0.965 | — | 0.23 ms |
+| 1,000 | 2,000 | 0.935 | — | 0.66 ms |
+| 3,000 | 6,000 | **0.835** | **0.97** | 1.6 ms |
+
+**Findings:** retrieval **latency scales fine** (vectorized matmul — sub-2ms at 6k nodes;
+beyond ~10k it needs a real ANN index / PrismRAG). Retrieval **recall degraded at scale**
+(0.965 → 0.835) — and higher top-k barely helped (0.90 at k=64), so it wasn't a top-k
+problem. Root cause: PrismLang's default **64-dim** projection crowds at scale. **Fix
+shipped:** default projection dim → **128**, which restores recall to **0.97** at 3k facts
+with no latency cost. (256 gives no further gain.)
+
 ## Honest caveats
 - **Determinism = replay-determinism** (6 first-renders, then 24 byte-identical replays),
   by design — not first-render token-determinism. The check is byte-equality, not

@@ -67,6 +67,28 @@ class InMemoryGraphStore:
         self._edges: dict[str, Edge] = {}
         self._label_index: dict[str, str] = {}  # lower(label) -> node_id
         self._version = 0
+        # cached unit-normalized embedding matrix for vectorized retrieval (rebuilt lazily)
+        self._emb_ids: list[str] = []
+        self._emb_unit = None  # np.ndarray [n_nodes, dim]
+        self._matrix_dirty = True
+
+    def _ensure_matrix(self) -> None:
+        if not self._matrix_dirty:
+            return
+        ids, vecs = [], []
+        for nid, node in self._nodes.items():
+            if node.embedding:
+                ids.append(nid)
+                vecs.append(node.embedding)
+        self._emb_ids = ids
+        if vecs:
+            m = np.asarray(vecs, dtype=np.float32)
+            norms = np.linalg.norm(m, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
+            self._emb_unit = m / norms
+        else:
+            self._emb_unit = None
+        self._matrix_dirty = False
 
     # -- reads --
     def find_node_by_label(self, label: str) -> Optional[str]:
@@ -82,35 +104,30 @@ class InMemoryGraphStore:
         """Entity resolution: the existing node whose embedding is closest to `embedding`,
         if above `threshold`. Lets a paraphrased subject ("the budget" vs "deploy budget")
         resolve to the same node without relying on the LLM to canonicalize perfectly."""
-        if not self._nodes or not embedding:
+        if not embedding:
+            return None
+        self._ensure_matrix()
+        if self._emb_unit is None:
             return None
         q = np.asarray(embedding, dtype=np.float32)
         qn = float(np.linalg.norm(q)) or 1.0
-        best_id, best_sim = None, threshold
-        for nid, node in self._nodes.items():
-            if not node.embedding:
-                continue
-            e = np.asarray(node.embedding, dtype=np.float32)
-            sim = float(np.dot(q, e)) / ((float(np.linalg.norm(e)) or 1.0) * qn)
-            if sim >= best_sim:
-                best_sim, best_id = sim, nid
-        return best_id
+        sims = self._emb_unit @ (q / qn)  # rows are unit-normalized → cosine
+        i = int(np.argmax(sims))
+        return self._emb_ids[i] if float(sims[i]) >= threshold else None
 
     def retrieve(self, embedding: list[float], k: int = 8) -> Subgraph:
         if not self._nodes:
             return Subgraph()
+        self._ensure_matrix()
+        if self._emb_unit is None:
+            return Subgraph()
         q = np.asarray(embedding, dtype=np.float32)
-        scored = []
-        for nid, node in self._nodes.items():
-            if not node.embedding:
-                continue
-            e = np.asarray(node.embedding, dtype=np.float32)
-            denom = float(np.linalg.norm(q) * np.linalg.norm(e)) or 1.0
-            sim = float(np.dot(q, e)) / denom
-            scored.append((sim, nid))
-        # exact ranking, stable tie-break by id → deterministic retrieval set.
-        scored.sort(key=lambda x: (-x[0], x[1]))
-        chosen = {nid for _, nid in scored[:k]}
+        qn = float(np.linalg.norm(q)) or 1.0
+        sims = self._emb_unit @ (q / qn)
+        kk = min(k, len(self._emb_ids))
+        # stable top-k → deterministic retrieval set (subgraph is canonically sorted in the key)
+        order = np.argsort(-sims, kind="stable")[:kk]
+        chosen = {self._emb_ids[int(i)] for i in order}
 
         edges = [e for e in self._edges.values() if e.is_current and (e.src in chosen or e.dst in chosen)]
         # pull in neighbor nodes so the subgraph is self-contained and renderable.
@@ -133,6 +150,7 @@ class InMemoryGraphStore:
                 if op.node is not None:
                     self._nodes[op.node.id] = op.node
                     self._label_index[op.node.label.strip().lower()] = op.node.id
+                    self._matrix_dirty = True  # invalidate the cached embedding matrix
                 if op.edge is not None:
                     self._edges[op.edge.id] = op.edge
             elif op.operation is Operation.ACCOMMODATE:

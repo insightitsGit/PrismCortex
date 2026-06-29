@@ -29,7 +29,10 @@ class PrismLangProjector:
     which is exactly the CPU-stable projection the read-path determinism contract needs.
     """
 
-    def __init__(self, taxonomy=None, tenant_id: str = "prismcortex") -> None:
+    def __init__(self, taxonomy=None, tenant_id: str = "prismcortex", k: int = 128) -> None:
+        # k = projection dimension. PrismLang defaults to 64, which crowds at scale
+        # (retrieval recall drops to ~0.86 at 3k facts); 128 restores it to ~0.97 with no
+        # latency cost. See benchmarks/scale_bench.py.
         from prismlang import Category, PrismProjector, TaxonomyConfig
 
         if taxonomy is None:
@@ -39,7 +42,7 @@ class PrismLangProjector:
                 Category("fact", "Fact", ["is", "are", "has", "budget", "name", "id", "number"]),
                 Category("tech", "Tech", ["deploy", "database", "server", "region", "api", "model"]),
             ])
-        self._p = PrismProjector(taxonomy, tenant_id=tenant_id)
+        self._p = PrismProjector(taxonomy, tenant_id=tenant_id, k=k)
         _, probe, _ = self._p.project("dimension probe")
         self.dim = len(probe)
 
