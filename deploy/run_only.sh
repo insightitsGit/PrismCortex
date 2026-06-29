@@ -8,10 +8,12 @@ export MSYS_NO_PATHCONV=1   # stop Git Bash mangling /data into a Windows path
 cd "$(dirname "$0")/.."
 set -a; . ./.env; set +a
 : "${GEMINI_API_KEY:?Set GEMINI_API_KEY in .env}"
+: "${PRISMCORTEX_API_KEY:?Set PRISMCORTEX_API_KEY in .env (server auth)}"
 
 RG=prismcortex-rg; ACR=prismcortexd7a6d0; IMG=prismcortex:bench
 SRV=prismcortex-server; DRV=prismcortex-driver; DNS=prismcortex-srv-d7a6d0
 BACKEND="${BACKEND:-prism}"   # prism = full PrismLang/PrismResonance stack; lite = hashing embeddings
+MODEL="${PRISMCORTEX_MODEL:-gemini-2.5-flash@ga1}"  # @epoch pin (part of cache key)
 
 LOGIN=$(az acr show -n "$ACR" -g "$RG" --query loginServer -o tsv)
 AUSER=$(az acr credential show -n "$ACR" --query username -o tsv)
@@ -26,8 +28,8 @@ az container create -g "$RG" -n "$SRV" --image "$LOGIN/$IMG" \
   --registry-login-server "$LOGIN" --registry-username "$AUSER" --registry-password "$APASS" \
   --cpu 2 --memory 4 --os-type Linux --restart-policy Never \
   --ip-address Public --ports 8080 --dns-name-label "$DNS" \
-  --environment-variables ROLE=server PRISMCORTEX_DATA=/data "PRISMCORTEX_BACKEND=$BACKEND" \
-  --secure-environment-variables GEMINI_API_KEY="$GEMINI_API_KEY" -o none
+  --environment-variables ROLE=server PRISMCORTEX_DATA=/data "PRISMCORTEX_BACKEND=$BACKEND" "PRISMCORTEX_MODEL=$MODEL" \
+  --secure-environment-variables GEMINI_API_KEY="$GEMINI_API_KEY" PRISMCORTEX_API_KEY="$PRISMCORTEX_API_KEY" -o none
 FQDN=$(az container show -g "$RG" -n "$SRV" --query ipAddress.fqdn -o tsv)
 echo "    server: http://$FQDN:8080"
 
@@ -35,7 +37,8 @@ echo "==> deploy DRIVER (same region/zone)"
 az container create -g "$RG" -n "$DRV" --image "$LOGIN/$IMG" \
   --registry-login-server "$LOGIN" --registry-username "$AUSER" --registry-password "$APASS" \
   --cpu 1 --memory 1.0 --os-type Linux --restart-policy Never \
-  --environment-variables ROLE=driver SERVER_URL="http://$FQDN:8080" PRISMCORTEX_DATA=/data -o none
+  --environment-variables ROLE=driver SERVER_URL="http://$FQDN:8080" PRISMCORTEX_DATA=/data \
+  --secure-environment-variables PRISMCORTEX_API_KEY="$PRISMCORTEX_API_KEY" -o none
 
 echo "==> waiting for driver to finish"
 for i in $(seq 1 100); do

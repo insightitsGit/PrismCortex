@@ -22,6 +22,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 SERVER = os.environ.get("SERVER_URL", "http://localhost:8080").rstrip("/")
+APIKEY = os.environ.get("PRISMCORTEX_API_KEY")
+_HEADERS = {"Content-Type": "application/json", **({"X-API-Key": APIKEY} if APIKEY else {})}
 DATA_DIR = os.environ.get("PRISMCORTEX_DATA", ".prismcortex_data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -88,7 +90,7 @@ def _post(path: str, payload: dict, timeout: float = 60.0) -> dict:
     data = json.dumps(payload).encode()
 
     def call():
-        req = urllib.request.Request(SERVER + path, data=data, headers={"Content-Type": "application/json"}, method="POST")
+        req = urllib.request.Request(SERVER + path, data=data, headers=_HEADERS, method="POST")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read())
 
@@ -97,7 +99,8 @@ def _post(path: str, payload: dict, timeout: float = 60.0) -> dict:
 
 def _get(path: str, timeout: float = 30.0) -> dict:
     def call():
-        with urllib.request.urlopen(SERVER + path, timeout=timeout) as r:
+        req = urllib.request.Request(SERVER + path, headers=_HEADERS)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read())
 
     return _retry(call)
@@ -241,6 +244,39 @@ def bench_memory(session_loops: int = 25) -> dict:
     return s
 
 
+def bench_load(total: int = 2000, concurrency: int = 50) -> dict:
+    print(f"\n[*] SUSTAINED LOAD  ({total} mixed req, c={concurrency})")
+    for q in QUERIES:
+        _post("/recall", {"query": q})  # warm caches first
+
+    def one(i):
+        t0 = time.perf_counter()
+        ok = True
+        try:
+            if i % 5 == 0:                       # 20% writes (salience-skipped chatter)
+                _post("/digest", {"text": "ok thanks"})
+            else:                                # 80% cached reads
+                _post("/recall", {"query": QUERIES[i % len(QUERIES)]})
+        except Exception:                        # noqa: BLE001
+            ok = False
+        return (time.perf_counter() - t0) * 1000, ok
+
+    t0 = time.perf_counter()
+    lat, errors = [], 0
+    with ThreadPoolExecutor(max_workers=concurrency) as ex:
+        for fut in as_completed([ex.submit(one, i) for i in range(total)]):
+            ms, ok = fut.result()
+            lat.append(ms)
+            errors += 0 if ok else 1
+    dur = time.perf_counter() - t0
+    rps = round(total / dur, 1)
+    print(f"    {total} reqs in {dur:.2f}s  ->  {rps} req/s   errors={errors}   "
+          f"p50={_pct(lat,50)}ms p95={_pct(lat,95)}ms p99={_pct(lat,99)}ms")
+    return {"total": total, "concurrency": concurrency, "duration_s": round(dur, 2), "rps": rps,
+            "errors": errors, "error_rate": round(errors / total, 5),
+            "latency_ms": {"p50": _pct(lat, 50), "p95": _pct(lat, 95), "p99": _pct(lat, 99)}}
+
+
 def main() -> None:
     print(f"=== PrismCortex benchmark driver -> {SERVER} ===")
     wait_for_health()
@@ -254,6 +290,7 @@ def main() -> None:
         "reconsolidation": bench_reconsolidation(),
         "consolidation": bench_consolidation(),
         "throughput": bench_throughput(),
+        "load": bench_load(),
         "memory": bench_memory(),
     }
     results["server_metrics"] = _get("/metrics")
@@ -279,6 +316,9 @@ def main() -> None:
     print(f"  memory savings (gist vs log) : {m['compression_ratio_gist']}x smaller  "
           f"({m['raw_bytes_ingested']}B -> {m['gist_bytes']}B gist)")
     print(f"  throughput (cached recalls)  : {t['rps']} req/s  p95={t['latency_ms']['p95']}ms")
+    ld = results["load"]
+    print(f"  sustained load               : {ld['rps']} req/s  errors={ld['errors']}/{ld['total']}  "
+          f"p99={ld['latency_ms']['p99']}ms")
     print(f"  cost: {c['gemini_calls']} Gemini calls for {c['recalls_total']} recalls  "
           f"(cache hit rate {c['cache_hit_rate']})")
     print(f"\n  full results -> {out}")

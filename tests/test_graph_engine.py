@@ -199,6 +199,47 @@ def test_sleep_resolves_both_staged_despite_relation_wording():
     assert sum(1 for e in store.all_edges() if e.valid_to is not None) == 1  # old retained
 
 
+class _FixedProj:
+    """Projector with controlled embeddings — to force a value-collision condition."""
+
+    def __init__(self, mapping):
+        self._m = mapping
+
+    def embed(self, text):
+        return self._m.get(text.strip().lower(), [0.0, 1.0, 0.0])
+
+    def classify(self, text):
+        return "general"
+
+
+def test_values_with_colliding_embeddings_stay_distinct():
+    """Regression: a NEW value must never fuzzy-merge into an existing value node even
+    when their embeddings collide — only subjects coref. (The bug that broke conflict
+    resolution: '300 seconds' merged into '60 seconds'.)"""
+    from prismcortex.models import Band, ExtractedEntity, ExtractedGist, ExtractedRelation, Provenance, Subgraph
+
+    store = InMemoryGraphStore()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_sub", label="cache ttl", embedding=[0.0, 0.0, 1.0])),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_60", label="60 seconds", embedding=[1.0, 0.0, 0.0])),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e60", src="n_sub", dst="n_60", relation="is")),
+    ]))
+    # "300 seconds" embeds IDENTICALLY to "60 seconds" — would merge if dst used fuzzy match
+    proj = _FixedProj({"cache ttl": [0.0, 0.0, 1.0], "60 seconds": [1.0, 0.0, 0.0], "300 seconds": [1.0, 0.0, 0.0]})
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+
+    gist = ExtractedGist(
+        entities=[ExtractedEntity(label="cache ttl"), ExtractedEntity(label="300 seconds")],
+        relations=[ExtractedRelation(src="cache ttl", dst="300 seconds", relation="is")],
+    )
+    delta, uncertain = mem._calculate_delta(gist, Subgraph(), Band.NORMAL, Provenance(source_id="m"))
+
+    new_values = [op.node.label for op in delta.ops if op.operation is Operation.ASSIMILATE and op.node]
+    assert "300 seconds" in new_values   # distinct new value, NOT merged into "60 seconds"
+    assert uncertain                      # and the 60-vs-300 conflict is detected
+
+
 def test_explain_returns_evidence_trail():
     store = InMemoryGraphStore()
     proj = HashingProjector()

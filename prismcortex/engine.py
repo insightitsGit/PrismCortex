@@ -159,17 +159,20 @@ class Memory:
         uncertain = False
         resolved: dict[str, str] = {}  # lower(label) -> node_id
 
-        def resolve(label: str, kind: str, attributes: Optional[dict] = None, allow_fuzzy: bool = True) -> str:
+        ent_meta = {e.label.strip().lower(): (e.kind, e.attributes) for e in gist.entities}
+
+        def resolve(label: str, allow_fuzzy: bool) -> str:
             key = label.strip().lower()
             if key in resolved:
                 return resolved[key]
             emb = self.projector.embed(label)
             nid = self.store.find_node_by_label(label)
-            if nid is None and allow_fuzzy:  # entity resolution: paraphrase -> same node
+            if nid is None and allow_fuzzy:  # subject coref: paraphrase -> same node
                 nid = self.store.find_similar_node(emb, self.resolve_threshold)
             if nid:
                 ops.append(DeltaOp(operation=Operation.REINFORCE, target_id=nid, reason="resolved to existing"))
             else:
+                kind, attributes = ent_meta.get(key, ("entity", {}))
                 nid = _node_id(label)
                 ops.append(DeltaOp(
                     operation=Operation.ASSIMILATE,
@@ -179,13 +182,11 @@ class Memory:
             resolved[key] = nid
             return nid
 
-        for ent in gist.entities:
-            resolve(ent.label, ent.kind, ent.attributes)
-
+        # Subjects (relation src) coref by similarity; values (dst) stay exact + distinct,
+        # so e.g. "300 seconds" never fuzzy-merges into an existing "60 seconds" node.
         for rel in gist.relations:
-            src_id = resolve(rel.src, "entity")
-            # values stay distinct ($40k != $55k); only subjects resolve by similarity
-            dst_id = resolve(rel.dst, "value", allow_fuzzy=False)
+            src_id = resolve(rel.src, allow_fuzzy=True)
+            dst_id = resolve(rel.dst, allow_fuzzy=False)
             new_edge = Edge(id=_edge_id(src_id, rel.relation, dst_id), src=src_id, dst=dst_id, relation=rel.relation, band=band, provenance=prov)
             prior = self._prior_edge(src_id, rel.relation)
 
@@ -202,6 +203,10 @@ class Memory:
                     uncertain = True
                 else:
                     ops.append(DeltaOp(operation=Operation.ASSIMILATE, edge=new_edge))
+
+        # Entities not referenced by any relation (attribute-only facts) — exact match only.
+        for ent in gist.entities:
+            resolve(ent.label, allow_fuzzy=False)
 
         return StateDelta(ops=ops), uncertain
 
