@@ -18,10 +18,12 @@ Real runs, real Gemini, two containers in one zone. No mocks, no synthetic numbe
 |---|---|
 | **Cross-container determinism** | **PASS** — 24/24 replays byte-identical over the network |
 | **Reconsolidation + time-travel** | **PASS** — `$40,000` → `$55,000`; old fact invalidated **but retained** |
-| **Conflict resolution (v0.2)** | **PASS** — a conflicting value (`60s` → `300s`) routed through the **labile buffer** and was resolved on `sleep()`, old value retained. The two-speed path fired on real Gemini. |
-| **Memory savings (graph vs log)** | **3.32× smaller** at 675 turns, and the graph **plateaus** (31 → 31 edges) — constant-size vs conversation volume |
-| **Throughput (cached recalls)** | **variable: 37–498 req/s** across runs (ACI instance variance + per-recall MiniLM projection). A floor, not a ceiling — needs real load-testing. |
-| **Cost** | **~28 Gemini calls served ~275 recalls** — ~97% cache hit rate |
+| **Conflict resolution** | **PASS** — a conflicting value (`60s` → `300s`) routes through the labile buffer and is resolved on `sleep()`, old value retained. Robust after the value-distinctness + relation-normalization fixes below. |
+| **Memory savings (graph vs log)** | **4.1× smaller** at 675 turns, and the graph **plateaus** (33 → 33 edges) — constant-size vs conversation volume |
+| **Sustained load** | **PASS** — 2000 mixed read/write requests, concurrency 50: **0 errors**, ~400 req/s, **p99 205 ms** (hardened/auth-enabled server) |
+| **Scale (retrieval)** | **PASS** — recall **0.98 hit@8 at 10k facts** (20k nodes), retrieve p95 5 ms |
+| **Throughput (cached recalls)** | 400–500 req/s on a single 2-vCPU container (a floor; latency includes per-recall MiniLM projection) |
+| **Cost** | **30 Gemini calls served 1881 recalls** — 99.4% cache hit |
 
 ### v0.2 improvements landed (this round)
 - **#1 Entity resolution** — incoming entities resolve to existing nodes by embedding
@@ -87,16 +89,21 @@ with no latency cost. (256 gives no further gain.)
 vectorized O(N) scan is fine to ~10k; an ANN index (PrismRAG) is for 50k+.
 
 ## Adversarial probes (`benchmarks/adversarial_bench.py`, real Gemini)
-4 probes that try to break it: **3/4 passed.**
-- ✅ over-merge guard (Acme Corp ≠ Acme Health — fuzzy-resolution threshold is safe)
+4 probes that try to break it: **4/4 passed** (after the fixes below).
+- ✅ over-merge guard (Acme Corp ≠ Acme Health — fuzzy threshold is safe)
 - ✅ distractor precision (1 right of 6 similar)
 - ✅ multi-hop (person → project → database)
-- ❌ contradiction-under-context: in a shared graph it returned "I don't have that info"
-  (0 superseded). **In isolation the same case passes** (March superseded, June current) —
-  so the *mechanism* is correct; the failure is **extraction inconsistency as context
-  grows** (relation-verb / subject drift). A real finding: correctness depends on the LLM
-  extracting consistent triples, which is fragile. Fix direction: detect conflicts by
-  subject + value-kind, not exact relation string.
+- ✅ contradiction-under-context — initially **FAILED**, which exposed a real bug.
+
+**The bug the harness caught (and we fixed).** The sustained-load run surfaced that
+corrections were being *silently dropped*: the entity-resolution improvement fuzzy-merged
+similar **values** (`"300 seconds"` into `"60 seconds"`), so the new value never landed and
+no conflict was detected. Fix: only **subjects** coref by similarity; **values** + standalone
+entities resolve by **exact** match. Plus relation-verb normalization for conflict
+detection, and canonical-subject + token-overlap resolution for paraphrased subjects.
+Regression-tested; re-validated end-to-end (`60→300` staged→sleep→resolved, old retained).
+This is the most valuable result here — the test process found a real reliability bug a
+friendly demo never would.
 
 ## Head-to-head vs Mem0 OSS (`benchmarks/vs_mem0.py`, same workload, same Gemini)
 Scrupulously fair — and it corrected one of our own assumptions:
