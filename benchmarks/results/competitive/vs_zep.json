@@ -1,0 +1,48 @@
+{
+  "benchmark": "correction_workload",
+  "timestamp": "2026-06-30T03:04:40.380090+00:00",
+  "workload": {
+    "fact": "My deploy budget is 40000 dollars per quarter.",
+    "correction": "Correction: my deploy budget is now 55000 dollars per quarter.",
+    "query": "what is my deploy budget?"
+  },
+  "prismcortex": {
+    "before": "40000 dollars per quarter",
+    "after": "deploy budget is 55000 dollars per quarter",
+    "correction_surfaces_new": true,
+    "old_retained": true,
+    "superseded_count": 1,
+    "replay_identical": true,
+    "cache_hit_on_replay": true,
+    "subgraph_hash": "53c01c10345bf399a76d2e81b4540d1c",
+    "self_hosted": true,
+    "byte_identical_render": true
+  },
+  "zep": null,
+  "comparison": {
+    "correction_surfaces_new": {
+      "prismcortex": true,
+      "zep": null
+    },
+    "old_retained": {
+      "prismcortex": true,
+      "zep": null
+    },
+    "replay_identical": {
+      "prismcortex": true,
+      "zep": null
+    },
+    "byte_identical_render": {
+      "prismcortex": true,
+      "zep": null
+    },
+    "self_hosted": {
+      "prismcortex": true,
+      "zep": null
+    }
+  },
+  "zep_live": false,
+  "mem0_published_locomo": 91.6,
+  "mem0_published_longmemeval": 94.8,
+  "zep_published_dmr": 94.8
+}

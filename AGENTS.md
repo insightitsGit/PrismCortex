@@ -55,6 +55,7 @@
 | 8 | [docs/SLA.md](docs/SLA.md) | Reference SLOs and commercial tiers |
 | 9 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing (~20 concurrent clients / 4 vCPU) |
 | 10 | [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | Load test explainer — v0.2.0→v0.2.1 fix, SLO fields |
+| 11 | [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | Market comparison — Mem0/Zep, LoCoMo/LongMemEval |
 | 10 | [SECURITY.md](SECURITY.md) | Security posture |
 
 **Website agents:** use [infoAlex.md](infoAlex.md) §9–§10 for landing page + trial implementation.
@@ -143,7 +144,15 @@ python benchmarks/scale_bench.py --ann
 3. Customer sets `PRISMCORTEX_LICENSE_KEY` in their deployment.
 4. See [docs/KEY_ROTATION.md](docs/KEY_ROTATION.md).
 
-### 5.7 Commit and push (this repo)
+### 5.8 Run competitive benchmarks
+
+1. `bash scripts/setup_bench_vendor.sh` — clone mem0ai/memory-benchmarks.
+2. `pip install -e ".[gemini,competitive,bench]"`.
+3. Head-to-head: `python benchmarks/vs_mem0.py`, `python benchmarks/vs_zep.py` (needs `ZEP_API_KEY`).
+4. Standard accuracy: `python benchmarks/competitive/run_standard.py locomo --project-name pc-smoke --conversations 0 --max-questions 5`.
+5. See [docs/COMPETITIVE.md](docs/COMPETITIVE.md).
+
+### 5.9 Commit and push (this repo)
 
 ```bash
 git status

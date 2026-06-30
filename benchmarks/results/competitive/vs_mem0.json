@@ -1,0 +1,31 @@
+{
+  "benchmark": "correction_workload",
+  "timestamp": "2026-06-30T03:04:27.774743+00:00",
+  "workload": {
+    "fact": "My deploy budget is 40000 dollars per quarter.",
+    "correction": "Correction: my deploy budget is now 55000 dollars per quarter.",
+    "query": "what is my deploy budget?"
+  },
+  "mem0": {
+    "before": "User has a deploy budget of 40,000 dollars per quarter.",
+    "after": "User has a deploy budget of 40,000 dollars per quarter.",
+    "correction_surfaces_new": false,
+    "old_retained": true,
+    "retrieval_identical": true,
+    "byte_identical_render": false,
+    "self_hosted": true
+  },
+  "prismcortex": {
+    "before": "40000 dollars per quarter",
+    "after": "55000 dollars per quarter",
+    "correction_surfaces_new": true,
+    "old_retained": true,
+    "superseded_count": 1,
+    "replay_identical": true,
+    "cache_hit_on_replay": true,
+    "byte_identical_render": true,
+    "self_hosted": true
+  },
+  "mem0_published_locomo": 91.6,
+  "mem0_published_longmemeval": 94.8
+}

@@ -11,5 +11,8 @@ venv/
 .prismcortex_cache/
 .prismcortex_blobs/
 .prismcortex_data/
+.prismcortex_bench_cache/
+.bench_vendor/
+datasets/
 *.db
 *.onnx
