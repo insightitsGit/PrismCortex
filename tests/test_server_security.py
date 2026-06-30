@@ -1,12 +1,17 @@
 """Server security: API-key auth + input size limits (no Gemini key needed)."""
 from fastapi.testclient import TestClient
 
-from prismcortex import server
+from prismcortex import auth, server
 
 
 def _client(monkeypatch, api_key):
-    monkeypatch.setattr(server, "API_KEY", api_key)
+    if api_key:
+        monkeypatch.setenv("PRISMCORTEX_API_KEY", api_key)
+    else:
+        monkeypatch.delenv("PRISMCORTEX_API_KEY", raising=False)
+    auth.reload_keys()
     monkeypatch.setattr(server, "_memory", None)
+    monkeypatch.setattr(server, "_tenant_mgr", None)
     return TestClient(server.app)
 
 

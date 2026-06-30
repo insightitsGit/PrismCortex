@@ -1,0 +1,36 @@
+{
+  "mode": "ann",
+  "ann_threshold": 5000,
+  "embedding_dim": 128,
+  "k": 8,
+  "sample_queries": 200,
+  "duration_s": 908.66,
+  "levels": [
+    {
+      "facts": 10000,
+      "nodes": 20000,
+      "edges": 10000,
+      "seed_ms_per_fact": 8.56,
+      "ann_active": true,
+      "queries": 200,
+      "hit_at_k": 0.915,
+      "answer_present": 0.915,
+      "retrieve_p50_ms": 6.631,
+      "retrieve_p95_ms": 9.998,
+      "retrieve_p99_ms": 12.713
+    },
+    {
+      "facts": 50000,
+      "nodes": 100000,
+      "edges": 50000,
+      "seed_ms_per_fact": 20.18,
+      "ann_active": true,
+      "queries": 200,
+      "hit_at_k": 0.85,
+      "answer_present": 0.85,
+      "retrieve_p50_ms": 60.052,
+      "retrieve_p95_ms": 74.311,
+      "retrieve_p99_ms": 94.181
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish prismcortex to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Test
+        run: pip install -e ".[dev]" && python -m pytest tests/ -q --tb=line
+
+      - name: Build
+        run: python -m build
+
+      - name: Verify package
+        run: twine check dist/*
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Configure trusted publishing at:
+        # https://pypi.org/manage/project/prismcortex/settings/publishing/
+        # Publisher: insightitsGit/PrismCortex, workflow: publish.yml, env: pypi

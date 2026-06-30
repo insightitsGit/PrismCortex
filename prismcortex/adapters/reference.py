@@ -17,6 +17,7 @@ from typing import Optional
 import numpy as np
 
 from ..determinism import graph_content_hash
+from ..labels import canonical_label, token_overlap
 from ..models import (
     AssetPointer,
     Band,
@@ -93,7 +94,32 @@ class InMemoryGraphStore:
 
     # -- reads --
     def find_node_by_label(self, label: str) -> Optional[str]:
-        return self._label_index.get(label.strip().lower())
+        key = label.strip().lower()
+        if key in self._label_index:
+            return self._label_index[key]
+        return self._label_index.get(canonical_label(label))
+
+    def node_label(self, node_id: str) -> Optional[str]:
+        n = self._nodes.get(node_id)
+        return n.label if n else None
+
+    def find_node_by_token_overlap(self, label: str, threshold: float = 0.34) -> Optional[str]:
+        """Resolve a paraphrased subject when embeddings differ ('product launch' vs 'launch')."""
+        best_id, best = None, threshold
+        for nid, node in self._nodes.items():
+            score = token_overlap(label, node.label)
+            if score > best:
+                best, best_id = score, nid
+        return best_id
+
+    def find_nodes_by_label_overlap(self, text: str, threshold: float = 0.34, limit: int = 4) -> list[str]:
+        scored = []
+        for nid, node in self._nodes.items():
+            score = token_overlap(text, node.label)
+            if score >= threshold:
+                scored.append((score, nid))
+        scored.sort(key=lambda x: (-x[0], x[1]))
+        return [nid for _, nid in scored[:limit]]
 
     def current_edge(self, src: str, relation: str) -> Optional[Edge]:
         for e in self._edges.values():
@@ -153,7 +179,11 @@ class InMemoryGraphStore:
             if op.operation is Operation.ASSIMILATE:
                 if op.node is not None:
                     self._nodes[op.node.id] = op.node
-                    self._label_index[op.node.label.strip().lower()] = op.node.id
+                    key = op.node.label.strip().lower()
+                    self._label_index[key] = op.node.id
+                    canon = canonical_label(op.node.label)
+                    if canon not in self._label_index:
+                        self._label_index[canon] = op.node.id
                     self._matrix_dirty = True  # invalidate the cached embedding matrix
                 if op.edge is not None:
                     self._edges[op.edge.id] = op.edge
@@ -220,7 +250,12 @@ class InMemoryGraphStore:
                     if n.provenance and n.provenance.source_id == source_id and nid not in referenced]
         for nid in node_ids:
             del self._nodes[nid]
-        self._label_index = {n.label.strip().lower(): nid for nid, n in self._nodes.items()}
+        self._label_index = {}
+        for nid, n in self._nodes.items():
+            self._label_index[n.label.strip().lower()] = nid
+            canon = canonical_label(n.label)
+            if canon not in self._label_index:
+                self._label_index[canon] = nid
         self._matrix_dirty = True
         if edge_ids or node_ids:
             self._version += 1

@@ -7,6 +7,7 @@ real measurements (real Gemini behind the server, no mocks):
   DETERMINISM     same query over the network → byte-identical answer + cache hits
   RECONSOLIDATION corrected fact changes the answer; old fact retained (time-travel)
   THROUGHPUT      concurrent cached recalls → rps + p50/p95/p99
+  LOAD            split sustained load — recall burst, digest burst, mixed smoke
   COST            Gemini calls actually made vs recalls served
 
 Results + logs are written under PRISMCORTEX_DATA and printed to stdout.
@@ -19,7 +20,9 @@ import os
 import time
 import urllib.error
 import urllib.request
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Callable
 
 SERVER = os.environ.get("SERVER_URL", "http://localhost:8080").rstrip("/")
 APIKEY = os.environ.get("PRISMCORTEX_API_KEY")
@@ -75,18 +78,29 @@ CHATTER = [
 ]
 
 
-def _retry(fn, attempts: int = 4):
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    return int(raw) if raw else default
+
+
+def _retry(fn, attempts: int = 4, retry_429: bool = False):
     last = None
     for i in range(attempts):
         try:
             return fn()
+        except urllib.error.HTTPError as exc:
+            last = exc
+            if retry_429 and exc.code == 429:
+                time.sleep(0.5 * (i + 1))
+                continue
+            raise
         except (urllib.error.URLError, ConnectionError, OSError) as exc:  # transient
             last = exc
             time.sleep(0.4 * (i + 1))
     raise last
 
 
-def _post(path: str, payload: dict, timeout: float = 60.0) -> dict:
+def _post(path: str, payload: dict, timeout: float = 60.0, *, retry_429: bool = False) -> dict:
     data = json.dumps(payload).encode()
 
     def call():
@@ -94,7 +108,7 @@ def _post(path: str, payload: dict, timeout: float = 60.0) -> dict:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read())
 
-    return _retry(call)
+    return _retry(call, retry_429=retry_429)
 
 
 def _get(path: str, timeout: float = 30.0) -> dict:
@@ -244,37 +258,140 @@ def bench_memory(session_loops: int = 25) -> dict:
     return s
 
 
-def bench_load(total: int = 2000, concurrency: int = 50) -> dict:
-    print(f"\n[*] SUSTAINED LOAD  ({total} mixed req, c={concurrency})")
-    for q in QUERIES:
-        _post("/recall", {"query": q})  # warm caches first
+def _parallel_bench(
+    label: str,
+    total: int,
+    concurrency: int,
+    work: Callable[[int], None],
+    *,
+    timeout: float = 60.0,
+) -> dict:
+    """Run `total` requests at `concurrency`; track latency + error types."""
+    print(f"\n[*] {label}  ({total} req, c={concurrency}, timeout={timeout}s)")
 
-    def one(i):
+    def one(i: int):
         t0 = time.perf_counter()
-        ok = True
+        err = None
         try:
-            if i % 5 == 0:                       # 20% writes (salience-skipped chatter)
-                _post("/digest", {"text": "ok thanks"})
-            else:                                # 80% cached reads
-                _post("/recall", {"query": QUERIES[i % len(QUERIES)]})
-        except Exception:                        # noqa: BLE001
-            ok = False
-        return (time.perf_counter() - t0) * 1000, ok
+            work(i)
+        except Exception as exc:  # noqa: BLE001
+            err = type(exc).__name__
+        return (time.perf_counter() - t0) * 1000, err
 
     t0 = time.perf_counter()
-    lat, errors = [], 0
+    lat: list[float] = []
+    err_counts: Counter[str] = Counter()
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         for fut in as_completed([ex.submit(one, i) for i in range(total)]):
-            ms, ok = fut.result()
+            ms, err = fut.result()
             lat.append(ms)
-            errors += 0 if ok else 1
+            if err:
+                err_counts[err] += 1
     dur = time.perf_counter() - t0
-    rps = round(total / dur, 1)
+    errors = sum(err_counts.values())
+    rps = round(total / dur, 1) if dur else 0.0
+    err_detail = dict(sorted(err_counts.items()))
     print(f"    {total} reqs in {dur:.2f}s  ->  {rps} req/s   errors={errors}   "
           f"p50={_pct(lat,50)}ms p95={_pct(lat,95)}ms p99={_pct(lat,99)}ms")
-    return {"total": total, "concurrency": concurrency, "duration_s": round(dur, 2), "rps": rps,
-            "errors": errors, "error_rate": round(errors / total, 5),
-            "latency_ms": {"p50": _pct(lat, 50), "p95": _pct(lat, 95), "p99": _pct(lat, 99)}}
+    if err_detail:
+        print(f"    error types: {err_detail}")
+    return {
+        "total": total,
+        "concurrency": concurrency,
+        "timeout_s": timeout,
+        "duration_s": round(dur, 2),
+        "rps": rps,
+        "errors": errors,
+        "error_rate": round(errors / total, 5) if total else 0.0,
+        "error_types": err_detail,
+        "latency_ms": {"p50": _pct(lat, 50), "p95": _pct(lat, 95), "p99": _pct(lat, 99)},
+    }
+
+
+def bench_recall_load(
+    total: int | None = None,
+    concurrency: int | None = None,
+) -> dict:
+    """Sustained cached-read load — isolates recall path from digest backlog."""
+    total = total if total is not None else _env_int("BENCH_RECALL_LOAD_TOTAL", 2000)
+    concurrency = concurrency if concurrency is not None else _env_int("BENCH_RECALL_LOAD_C", 50)
+    for q in QUERIES:
+        _post("/recall", {"query": q})  # warm caches
+
+    def work(i: int) -> None:
+        _post("/recall", {"query": QUERIES[i % len(QUERIES)]}, timeout=30.0, retry_429=True)
+
+    return _parallel_bench(
+        "RECALL LOAD (cached reads only)",
+        total,
+        concurrency,
+        work,
+        timeout=30.0,
+    )
+
+
+def bench_digest_load(
+    total: int | None = None,
+    concurrency: int | None = None,
+) -> dict:
+    """Sustained write load — salience-gated chatter; c capped near digest semaphore."""
+    total = total if total is not None else _env_int("BENCH_DIGEST_LOAD_TOTAL", 400)
+    concurrency = concurrency if concurrency is not None else _env_int("BENCH_DIGEST_LOAD_C", 16)
+    chatter = ["ok thanks", "got it", "thanks", "sounds good", "noted"]
+
+    def work(i: int) -> None:
+        _post("/digest", {"text": chatter[i % len(chatter)]}, timeout=90.0, retry_429=True)
+
+    return _parallel_bench(
+        "DIGEST LOAD (salience-skipped chatter)",
+        total,
+        concurrency,
+        work,
+        timeout=90.0,
+    )
+
+
+def bench_mixed_load(
+    total: int | None = None,
+    concurrency: int | None = None,
+) -> dict:
+    """Optional mixed R/W smoke — lower concurrency than recall-only burst."""
+    total = total if total is not None else _env_int("BENCH_MIXED_LOAD_TOTAL", 500)
+    concurrency = concurrency if concurrency is not None else _env_int("BENCH_MIXED_LOAD_C", 20)
+    for q in QUERIES:
+        _post("/recall", {"query": q})
+
+    def work(i: int) -> None:
+        if i % 5 == 0:
+            _post("/digest", {"text": "ok thanks"}, timeout=90.0, retry_429=True)
+        else:
+            _post("/recall", {"query": QUERIES[i % len(QUERIES)]}, timeout=30.0, retry_429=True)
+
+    return _parallel_bench(
+        "MIXED LOAD (20% writes, smoke test)",
+        total,
+        concurrency,
+        work,
+        timeout=90.0,
+    )
+
+
+def bench_load() -> dict:
+    """Split sustained load: recall burst, then digest burst, then optional mixed smoke."""
+    recall = bench_recall_load()
+    digest = bench_digest_load()
+    mixed = bench_mixed_load()
+    errors = recall["errors"] + digest["errors"] + mixed["errors"]
+    total = recall["total"] + digest["total"] + mixed["total"]
+    return {
+        "recall": recall,
+        "digest": digest,
+        "mixed": mixed,
+        "errors": errors,
+        "total": total,
+        "error_rate": round(errors / total, 5) if total else 0.0,
+        "slo_pass": errors == 0,
+    }
 
 
 def main() -> None:
@@ -317,8 +434,15 @@ def main() -> None:
           f"({m['raw_bytes_ingested']}B -> {m['gist_bytes']}B gist)")
     print(f"  throughput (cached recalls)  : {t['rps']} req/s  p95={t['latency_ms']['p95']}ms")
     ld = results["load"]
-    print(f"  sustained load               : {ld['rps']} req/s  errors={ld['errors']}/{ld['total']}  "
-          f"p99={ld['latency_ms']['p99']}ms")
+    lr, ldig, lmix = ld["recall"], ld["digest"], ld["mixed"]
+    print(f"  recall load (c={lr['concurrency']})     : {lr['rps']} req/s  "
+          f"errors={lr['errors']}/{lr['total']}  p99={lr['latency_ms']['p99']}ms")
+    print(f"  digest load (c={ldig['concurrency']})   : {ldig['rps']} req/s  "
+          f"errors={ldig['errors']}/{ldig['total']}  p99={ldig['latency_ms']['p99']}ms")
+    print(f"  mixed smoke (c={lmix['concurrency']})     : {lmix['rps']} req/s  "
+          f"errors={lmix['errors']}/{lmix['total']}  p99={lmix['latency_ms']['p99']}ms")
+    print(f"  load SLO                     : {'PASS' if ld['slo_pass'] else 'FAIL'}  "
+          f"({ld['errors']}/{ld['total']} total errors)")
     print(f"  cost: {c['gemini_calls']} Gemini calls for {c['recalls_total']} recalls  "
           f"(cache hit rate {c['cache_hit_rate']})")
     print(f"\n  full results -> {out}")

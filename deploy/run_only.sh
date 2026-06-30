@@ -14,6 +14,9 @@ RG=prismcortex-rg; ACR=prismcortexd7a6d0; IMG=prismcortex:bench
 SRV=prismcortex-server; DRV=prismcortex-driver; DNS=prismcortex-srv-d7a6d0
 BACKEND="${BACKEND:-prism}"   # prism = full PrismLang/PrismResonance stack; lite = hashing embeddings
 MODEL="${PRISMCORTEX_MODEL:-gemini-2.5-flash@ga1}"  # @epoch pin (part of cache key)
+SRV_CPU="${SRV_CPU:-4}"
+SRV_MEM="${SRV_MEM:-8}"
+SRV_ENV="ROLE=server PRISMCORTEX_DATA=/data PRISMCORTEX_BACKEND=$BACKEND PRISMCORTEX_MODEL=$MODEL PRISMCORTEX_USE_ANN=1 PRISMCORTEX_READ_POOL=64 PRISMCORTEX_MAX_CONCURRENT_DIGEST=16 UVICORN_LIMIT_CONCURRENCY=256"
 
 LOGIN=$(az acr show -n "$ACR" -g "$RG" --query loginServer -o tsv)
 AUSER=$(az acr credential show -n "$ACR" --query username -o tsv)
@@ -23,15 +26,30 @@ echo "==> cleaning any prior container groups"
 az container delete -g "$RG" -n "$SRV" --yes >/dev/null 2>&1 || true
 az container delete -g "$RG" -n "$DRV" --yes >/dev/null 2>&1 || true
 
-echo "==> deploy SERVER (public :8080)"
+echo "==> deploy SERVER (public :8080, ${SRV_CPU} vCPU / ${SRV_MEM} GB)"
 az container create -g "$RG" -n "$SRV" --image "$LOGIN/$IMG" \
   --registry-login-server "$LOGIN" --registry-username "$AUSER" --registry-password "$APASS" \
-  --cpu 2 --memory 4 --os-type Linux --restart-policy Never \
+  --cpu "$SRV_CPU" --memory "$SRV_MEM" --os-type Linux --restart-policy Never \
   --ip-address Public --ports 8080 --dns-name-label "$DNS" \
-  --environment-variables ROLE=server PRISMCORTEX_DATA=/data "PRISMCORTEX_BACKEND=$BACKEND" "PRISMCORTEX_MODEL=$MODEL" \
-  --secure-environment-variables GEMINI_API_KEY="$GEMINI_API_KEY" PRISMCORTEX_API_KEY="$PRISMCORTEX_API_KEY" -o none
-FQDN=$(az container show -g "$RG" -n "$SRV" --query ipAddress.fqdn -o tsv)
+  --environment-variables $SRV_ENV \
+  --secure-environment-variables GEMINI_API_KEY="$GEMINI_API_KEY" PRISMCORTEX_API_KEY="$PRISMCORTEX_API_KEY" \
+  --no-wait -o none
+FQDN=$(az container show -g "$RG" -n "$SRV" --query ipAddress.fqdn -o tsv 2>/dev/null || echo "$DNS.eastus.azurecontainer.io")
 echo "    server: http://$FQDN:8080"
+
+echo "==> waiting for server container + /health (4 vCPU can take several minutes)"
+for i in $(seq 1 90); do
+  ST=$(az container show -g "$RG" -n "$SRV" --query 'containers[0].instanceView.currentState.state' -o tsv 2>/dev/null || echo "")
+  echo "    [$i] server state: ${ST:-pending}"
+  if [ "$ST" = "Running" ]; then
+    if curl -sf --max-time 8 "http://$FQDN:8080/health" 2>/dev/null | grep -q '"ok"'; then
+      echo "    server healthy"
+      break
+    fi
+  fi
+  [ "$i" -eq 90 ] && echo "    WARN: server health timeout — driver may fail"
+  sleep 10
+done
 
 echo "==> deploy DRIVER (same region/zone)"
 az container create -g "$RG" -n "$DRV" --image "$LOGIN/$IMG" \

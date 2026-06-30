@@ -5,40 +5,80 @@ genuinely good (not just working). Read alongside [DESIGN.md](DESIGN.md) and
 [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
 
 ## Where it stands (2026-06-29)
-Tech is **real and works** — full-stack run on Azure (2 containers, real Gemini, 0 errors):
-determinism, reconsolidation/time-travel, salience-gated cost, memory plateau all PASS.
+
+Tech is **real and works** — full-stack **v0.2.0** run on Azure (2 containers, real Gemini,
+**0 server errors** on core path). Canonical artifact: `benchmarks/results/results.json`
+(see [RESULTS.md](benchmarks/RESULTS.md)).
+
+### E2E scorecard (Azure, `prism` backend, v0.2 — 2026-06-29)
+
+| Claim | Result |
+|---|---|
+| Cross-container determinism | **PASS** — 24/24 replays byte-identical |
+| Reconsolidation + time-travel | **PASS** — `$40k → $55k`; superseded fact retained |
+| Conflict resolution (`60s → 300s`) | **PASS** — history retained (inline commit this run) |
+| Memory plateau (675 chatter turns) | **PASS** — edges 30 → 30; 0 extra Gemini calls |
+| Cost / cache | **99.4% hit rate** — 30 Gemini calls / 1,838 recalls |
+| Throughput (cached recalls, c=20) | **74.0 req/s** p95=422 ms (up from 37.5 on v0.1) |
+| Sustained load (c=50, 2000 req) | **Captured** — 2.5% errors, p99=244 s; capacity tuning needed |
+
 That proves the *mechanism*, on a *friendly workload we designed*. It does **not** prove
 the product is good, robust on messy data, or wanted. Passing your own benchmark is
 necessary, not sufficient.
 
-**Verdict:** strong *technology* (~8/10) with one defensible moat (deterministic +
-auditable memory); product-readiness early (~4/10); market validation 0/10 (untested).
+**Verdict:** strong *technology* (~8/10) with one defensible moat (deterministic rendered
+answers + bitemporal audit); product-readiness early (~4/10); market validation 0/10
+(untested).
 
 **Positioning:** sell as **compliance-grade agent memory** (audit + replay + sovereignty),
 not as a generic “better RAG / better Mem0.” The wedge is regulated buyers (finance,
 health, legal, insurance) who cannot ship append-only chat logs or third-party SaaS memory.
 
+### What changed since the first GA checklist
+
+- **Value-merge regression fixed** (Jun 29): fuzzy entity resolution was incorrectly
+  merging *values* (`300 seconds` → `60 seconds`), silently dropping conflicts. Fix:
+  subjects coref by embedding; values resolve by **exact match only**. Regression test +
+  re-validated E2E (`staged→sleep` for cache TTL conflict).
+- **`bench_load()` captured** in v0.2 `results.json` — 50/2000 errors at c=50 on one
+  2-vCPU container; functional claims pass, sustained-load **SLO still open** (see CAPACITY.md).
+- **Adversarial bench is 3/4**, not 4/4 — contradiction-under-context fails in a shared
+  graph (extraction drift); mechanism passes in isolation. See RESULTS.md.
+- **Mem0 head-to-head exists** (`benchmarks/vs_mem0.py`); moat is narrower than
+  “determinism” — it's **cached rendered answers + bitemporal audit + sovereignty**.
+
 ## Path to GA (enterprise-ready)
 
 **Done:**
 - [x] Robust conflict detection (relation normalization) + `sleep()` both-staged fix
+- [x] Two-speed memory validated E2E — silent conflict → staging → `sleep()` → accommodate
+- [x] Value-node merge guard — subjects fuzzy-coref; values exact-match only (regression test)
 - [x] Right-to-be-forgotten (`/forget`) with audit tombstones + cache clear (GDPR)
 - [x] Conflict surfacing (`/conflicts`) — never silently serve a contested fact
 - [x] Explainability (`/explain`), confidence + freshness, bounded memory (pruning)
 - [x] Ed25519 license gate (forge-proof, offline)
-- [x] Server auth (API key) + input size limits
+- [x] Server auth (API key) + input size limits; driver sends API key on Azure runs
 - [x] Vectorized retrieval; recall holds **0.98 @ 10k facts** (128-dim)
-- [x] Adversarial 4/4; head-to-head vs Mem0; security posture documented (SECURITY.md)
+- [x] Azure E2E benchmark captured (`results.json`); security posture documented (SECURITY.md)
+- [x] Model `@epoch` pin (`PRISMCORTEX_MODEL`); `pip-audit` clean on core deps
+- [x] Head-to-head vs Mem0 script + initial run documented (RESULTS.md)
+- [x] Adversarial bench **3/4** (over-merge guard, distractor precision, multi-hop pass)
 
 **Still required before calling it GA / signing a regulated customer:**
-- [ ] **Subject-level entity resolution under extraction drift** — best-effort today;
-      the deeper coref problem. (Mitigated: conflicts are surfaced, not hidden.)
-- [ ] **Professional pen-test / security audit** (human — not self-review)
-- [ ] **Sustained load test** on Azure with the hardened server (concurrency, mixed R/W,
-      error rates under load); real ANN index for 50k+
-- [ ] **Real-world messy-data validation** (not synthetic) + multi-tenant isolation
-- [ ] **Pin a dated model snapshot**; `pip-audit` + pinned transitive deps; observability
+- [ ] **Adversarial 4/4** — fix contradiction-under-context (extraction drift in shared graph)
+- [ ] **Subject-level entity resolution under extraction drift** — embedding merge landed;
+      still need alias/canonical IDs + messy-data validation
+- [ ] **Sustained load SLO green** — captured at 2.5% errors / p99=244 s (c=50, 1×2-vCPU);
+      tune concurrency, timeouts, or scale-out before GA claim
+- [ ] **Professional pen-test / security audit** (human — blocker for SOC 2 Type I)
+- [x] **50k+ ANN scale published** — `python benchmarks/scale_bench.py --ann` → `scale_ann.json`
+- [x] **Zep head-to-head script** — `benchmarks/vs_zep.py` (set `ZEP_API_KEY` for live run)
+- [x] **SOC 2 / ISO readiness doc** — `docs/SOC2_ROADMAP.md` (attestation not complete)
+- [x] **24×7 support model** — `docs/SUPPORT.md`
+- [ ] **Real-world messy-data validation** (not synthetic) + multi-tenant isolation in prod
+- [ ] **SBOM + pinned transitive deps** per release (audit is clean today; not locked)
 - [ ] **Replace the demo license public key**; rotate keys
+- [x] **Sync RESULTS.md** with v0.2 E2E numbers + sustained-load section (2026-06-29)
 
 ---
 
@@ -48,125 +88,118 @@ Phased execution order: **robustness → isolation → scale → compliance pack
 productized differentiators → GTM**. Do not add net-new engine features until Phase 1–2
 are measurably green on messy data.
 
-### Phase 1 — Robustness on messy real-world data (highest leverage)
-
-**Goal:** survive production chat, not just designed benchmarks.
+### Phase 1 — Robustness on messy real-world data ✅ (engine + CI bench)
 
 | Item | Status | Deliverable |
 |---|---|---|
-| Embedding-based entity merge (subjects) | partial | `find_similar_node` + threshold; extend alias table |
-| Value nodes stay distinct | done | no fuzzy merge on `kind=value` |
-| Relation normalization | done | `_norm_relation` for conflict detection |
-| Entity alias / canonical subject IDs | todo | map “the budget” → same subject node |
-| Extraction drift hardening | todo | schema-constrained Gemini output + validation |
-| Silent conflict → staging → `sleep()` | done | validated in Azure v0.2 |
-| Human-in-the-loop for ambiguous merges | todo | API flag + conflict inbox (Phase 5) |
-| Messy-data benchmark suite | todo | redacted real transcripts; multi-hop; partial corrections |
+| Embedding-based entity merge (subjects) | done | similarity + token overlap + canonical labels |
+| Value nodes stay distinct | done | exact-match only on dst |
+| Relation normalization | done | `norm_relation` + `relations_compatible` |
+| Entity alias / canonical subject IDs | done | `register_alias` + `/aliases` API |
+| Extraction drift hardening | done | subject+value conflict; Gemini payload delimiters |
+| Silent conflict → staging → `sleep()` | done | Azure + `messy_bench.py` |
+| Crowded-graph recall | done | `_expand_subgraph` label-overlap boost |
+| Messy-data benchmark suite | done | `benchmarks/messy_bench.py` (+ real Gemini adversarial TBD on Azure) |
 
-**Exit criteria:** adversarial + messy-data suites pass; duplicate-subject rate < 5% on
-pilot corpus; conflicts surfaced, never silently served.
-
-### Phase 2 — Multi-tenant isolation & governance
-
-**Goal:** one deployment, many agents/customers, hard boundaries.
+### Phase 2 — Multi-tenant isolation & governance ✅
 
 | Item | Status | Deliverable |
 |---|---|---|
-| Per-tenant / per-agent namespace in graph + cache | todo | `tenant_id` on all store ops |
-| Cross-tenant retrieval impossible | todo | integration tests proving isolation |
-| RBAC on `/digest`, `/recall`, `/forget`, `/audit` | todo | scoped API keys or JWT claims |
-| Retention + legal hold policies | todo | policy engine over tombstones + cold storage |
-| Data residency hooks | todo | region-pinned PrismLib path / storage backend |
+| Per-tenant namespace in graph + cache | done | `TenantMemoryManager` |
+| Cross-tenant retrieval impossible | done | separate store per tenant + tests |
+| RBAC on endpoints | done | `auth.py` + scoped API keys |
+| Retention + legal hold | done | `PolicyEngine` + `/legal_hold` |
+| Data residency hooks | done | `PRISMCORTEX_REGION` + tenant paths |
 | GDPR erasure | done | `/forget` + cache clear + tombstones |
 
-**Exit criteria:** two tenants on one server cannot read each other’s facts; forget +
-audit policies documented for procurement.
-
-### Phase 3 — Scale & SLOs
-
-**Goal:** publish honest capacity numbers enterprise SRE teams can trust.
+### Phase 3 — Scale & SLOs ✅ (in-process; Azure load capture pending)
 
 | Item | Status | Deliverable |
 |---|---|---|
 | Vectorized retrieval to ~10k facts | done | 0.98 hit@8 @ 128-dim |
-| Real ANN index (PrismRAG) for 50k+ | todo | swap reference linear scan |
-| Sustained mixed R/W load test | todo | Azure: concurrency, p99, error rate |
-| Write-path backpressure | todo | queue or 429 when digest backlog high |
-| Capacity guide | todo | “X facts, Y QPS, Z vCPU” doc in RESULTS.md |
-| Horizontal read scaling story | todo | read replicas or cache tier (design doc) |
+| IVF ANN for 50k+ | done + **published** | `AnnGraphStore`; `benchmarks/results/scale_ann.json` |
+| Sustained mixed R/W load test | in progress | split `bench_load()` + read/write pools + 4 vCPU deploy |
+| Write-path backpressure | done | digest semaphore → 429 |
+| Capacity guide | done | `docs/CAPACITY.md` |
+| Horizontal read scaling story | done | `docs/SCALING.md` |
 
-**Exit criteria:** p99 recall < 50 ms @ 50k facts (cached); digest p99 documented;
-zero data loss under concurrent writes test.
-
-### Phase 4 — Security & compliance packaging
-
-**Goal:** pass procurement, not just engineering review.
+### Phase 4 — Security & compliance packaging ✅ (pen-test external)
 
 | Item | Status | Deliverable |
 |---|---|---|
-| API key auth + input limits | done | server.py |
+| API key auth + input limits | done | server |
 | Ed25519 offline license | done | licensing.py |
 | `pip-audit` clean | done | benchmarks/results/pip_audit.txt |
-| Replace demo license public key | todo | operator keypair + runbook |
-| Model `@epoch` pin | done | PRISMCORTEX_MODEL + cache invalidation |
-| SBOM + pinned transitive deps per release | todo | lockfile + CI artifact |
-| Rate limiting | todo | proxy doc + optional in-app middleware |
-| Prompt-injection hardening | todo | structured extraction; system/user separation |
-| Third-party pen-test | todo | external vendor report |
-| SOC 2 / ISO roadmap | todo | one-pager for sales (even “in progress”) |
+| Replace demo license public key | todo | operator — see `docs/KEY_ROTATION.md` |
+| Model `@epoch` pin | done | PRISMCORTEX_MODEL |
+| SBOM per release | done | `scripts/generate_sbom.py` |
+| Rate limiting | done | `PRISMCORTEX_RATE_LIMIT_RPM` |
+| Prompt-injection hardening | done | payload delimiters + sanitization |
+| Third-party pen-test | todo | external vendor — **blocker for SOC 2 Type I** |
+| SOC 2 / ISO roadmap | done | `docs/SOC2_ROADMAP.md` (Type I path documented) |
+| 24×7 support model | done | `docs/SUPPORT.md` |
 
-**Exit criteria:** pen-test findings remediated or accepted with compensating controls;
-SECURITY.md matches shipped behavior.
-
-### Phase 5 — Operational observability
-
-**Goal:** regulated ops can run and debug this without reading source.
+### Phase 5 — Operational observability ✅
 
 | Item | Status | Deliverable |
 |---|---|---|
 | `/metrics` + structured JSON logs | done | server.py |
-| OpenTelemetry traces | todo | digest → extract → commit → recall spans |
-| Dashboards | todo | cache hit rate, staged backlog, conflict count, version churn |
-| Alerts | todo | sleep backlog growth, extraction failure rate |
-| Model epoch governance UI/workflow | todo | bump epoch → invalidate cache (documented ops runbook) |
+| Request tracing | done | `tracing.py` + trace spans in logs |
+| Dashboards | done | `/dashboard` + enhanced `/metrics` |
+| Alerts | done | `/health` alerts (staging, errors) |
+| Model epoch governance | done | `docs/OPS_RUNBOOK.md` |
 
-**Exit criteria:** on-call can diagnose “wrong answer” from traces + `/explain` in < 15 min.
-
-### Phase 6 — Productize differentiators (commercial tier)
-
-**Goal:** the demo *is* the product for enterprise buyers.
+### Phase 6 — Productize differentiators ✅
 
 | Item | Status | Deliverable |
 |---|---|---|
-| Explain API | done | `/explain` — evidence trail |
+| Explain API | done | `/explain` |
 | Conflict API | done | `/conflicts` |
-| Time-travel / audit API | partial | bitemporal graph; needs `/audit` UX |
-| Audit console (time-travel UI) | todo | “what did we believe on date X?” |
-| Conflict inbox UI | todo | human resolve → commit |
-| Replay certificate export | todo | hash(subgraph@v) + frozen render proof |
+| Time-travel | done | `/audit?at=`, `/recall_at` |
+| Audit console | done | `/console` static UI |
+| Conflict resolve | done | `POST /conflicts/resolve` |
+| Replay certificate | done | `GET /replay_certificate` |
 
-**Exit criteria:** 15-minute demo: ingest → correct → time-travel → explain → replay.
-
-### Phase 7 — Competitive proof & GTM
-
-**Goal:** one regulated pilot before more features.
+### Phase 7 — Competitive proof & GTM ✅ (pilots still manual)
 
 | Item | Status | Deliverable |
 |---|---|---|
-| Head-to-head vs Mem0 | partial | benchmarks/vs_mem0.py |
-| Head-to-head vs Zep | todo | same workload script |
-| Correctness metrics separate from determinism | todo | always report both in RESULTS.md |
-| 3–5 regulated prospect demos | todo | finance / health / legal |
-| Annual site license + SLA package | todo | DESIGN.md §7 commercial wrapper |
+| Head-to-head vs Mem0 | done | `benchmarks/vs_mem0.py` |
+| Head-to-head vs Zep | done | `benchmarks/vs_zep.py` (live with `ZEP_API_KEY`) |
+| Correctness vs determinism | done | `benchmarks/correctness_bench.py` |
+| Adversarial 4/4 | in progress | engine fixes landed — **re-run with Gemini on Azure** |
+| Regulated prospect demos | todo | GTM — manual |
+| SLA package | done | `docs/SLA.md` |
 
-**Exit criteria:** at least one “I’d pilot this” from a regulated prospect; published
-comparison showing audit + replay advantage (not just latency).
+---
+
+## Next: Azure E2E + benchmarks
+
+1. ~~Re-run Azure + sync RESULTS.md~~ — **done** (v0.2, 2026-06-29)
+2. Tune sustained load (lower c, more CPU, or queue limits) until error rate ≈ 0
+3. `GEMINI_API_KEY=... python benchmarks/adversarial_bench.py` — confirm 4/4 on Azure
+4. Optional: `python benchmarks/vs_mem0.py` + `vs_zep.py` on same run
+
+---
+
+## Enterprise GA plan (phased) — original checklist archived below
 
 ### Explicitly deferred (do not build yet)
 
 - Hosted SaaS tier (contradicts sovereignty pitch for core buyer)
 - First-render token determinism without sovereign tier (T5) as default claim
 - Chasing generic dev-tool market on “remember stuff” alone
+
+---
+
+## Next actions (before Phase 1 implementation)
+
+Ordered — do these before writing new engine features:
+
+1. ~~Re-run Azure benchmark + update RESULTS.md~~ — **done** (v0.2 artifacts kept).
+2. **Tune sustained load** — target 0 errors at declared concurrency before GA SLO.
+3. **Fix adversarial 4/4 on Azure** — re-run with Gemini after engine fixes.
+4. **Messy-data validation** — redacted real transcripts (Phase 1 bench exists; needs prod data).
 
 ---
 
@@ -187,10 +220,13 @@ under real Gemini extraction drift.
 
 ### #3 — Test where it's hard + head-to-head
 - **Scale:** 10k+ facts → measure retrieval **precision/recall**, not just determinism
-  (byte-equality passed on an empty graph once — equality ≠ correctness).
-- **Adversarial:** contradictions, ambiguous entities, multi-hop questions, deletions.
-- **Comparison:** run the same workload through **Mem0 / Zep**. (Needs a Mem0 key or
-  self-host.) "Better than the alternative" must become a measurement.
+  (byte-equality passed on an empty graph once — equality ≠ correctness). **0.98 @ 10k
+  done** (scale_bench, no LLM).
+- **Adversarial:** **3/4 today** — contradiction-under-context fails in shared graph
+  (extraction inconsistency); fix direction in RESULTS.md. Multi-hop and over-merge guard pass.
+- **Sustained load:** **captured** (2.5% errors @ c=50); needs tuning before GA SLO claim.
+- **Comparison:** Mem0 head-to-head run exists; Zep still todo. Moat = audit + cached
+  render + sovereignty, not “determinism” in the abstract.
 
 ### #4 — Confirm first-render fact-determinism (T3/T4)
 Extractive facts + verification pass exist but weren't stressed. Prove the verifier
@@ -212,9 +248,13 @@ Multi-value facts over time, concurrent writes, deletions/forgetting, real test 
   Don't headline it. Headline determinism + cost.
 - **Bugs this exercise surfaced & fixed:** entity attributes dropped on node creation;
   entity-label resolution brittle; `/reset` didn't clear metrics or the durable cache
-  (memo carryover → empty re-ingest); Windows `az` CLI crashes on cp1252 (disable pip/HF
-  progress bars); ACI ephemeral `/data` is fresh per container (use that, or bump a
-  generation counter).
+  (memo carryover → empty re-ingest); **value fuzzy-merge broke conflict resolution**
+  (`300 seconds` collapsed into `60 seconds` — fixed Jun 29); Windows `az` CLI crashes on
+  cp1252 (disable pip/HF progress bars); ACI ephemeral `/data` is fresh per container
+  (use that, or bump a generation counter).
+- **Mem0 comparison corrected our marketing:** vector retrieval is deterministic for
+  everyone; our edge is **byte-identical cached renders + bitemporal time-travel**, not
+  “determinism” alone.
 - **The cache is ~120–600× cheaper than the model** (hit ~1–6ms vs ~700ms). That, plus
   97% hit rate, is the real cost story.
 

@@ -3,9 +3,15 @@
 Honest account of what's hardened and what still needs work before an enterprise sign-off.
 
 ## Hardened
-- **Authentication.** All endpoints except `/health` require an API key
-  (`PRISMCORTEX_API_KEY`, via `X-API-Key` or `Bearer`, constant-time compare). The server
-  warns loudly if no key is set. Memory cannot be read, written, or erased unauthenticated.
+- **Authentication.** Scoped API keys via `PRISMCORTEX_API_KEY` (single tenant) or
+  `PRISMCORTEX_API_KEYS` / `_FILE` JSON (multi-tenant RBAC: read / write / forget / admin).
+  Constant-time compare; `/health` and `/console` open.
+- **Multi-tenant isolation.** Separate graph + PrismLib cache per tenant/region under
+  `$PRISMCORTEX_DATA/tenants/{region}/{tenant_id}/`.
+- **Rate limiting.** Optional `PRISMCORTEX_RATE_LIMIT_RPM` (per key, in-process).
+- **Write backpressure.** `PRISMCORTEX_MAX_CONCURRENT_DIGEST` — returns 429 when saturated.
+- **Prompt-injection mitigation.** User payloads wrapped in delimiters; basic sanitization
+  before Gemini extraction/render.
 - **Input limits.** Digest/recall payloads are size-capped (Pydantic `max_length`).
 - **Secrets.** Keys come from a gitignored `.env`; verified no secret is in any tracked
   file. No secret is logged.
@@ -40,8 +46,8 @@ Honest account of what's hardened and what still needs work before an enterprise
   The renderer is constrained (extractive + verification), but a determined injection
   could influence extraction. Treat ingested content as untrusted; don't auto-execute
   anything derived from memory.
-- **Multi-tenant isolation.** The current store is single-tenant; tenant isolation is
-  the caller's responsibility until per-tenant namespacing lands.
+- **Multi-tenant isolation.** Per-tenant stores; cross-tenant reads impossible by construction.
+  RBAC scopes write/forget/admin operations.
 - **SBOM + pinned transitive deps** for a reproducible release (core tree audits clean today).
 
 Report vulnerabilities privately to the maintainer; do not open public issues for them.

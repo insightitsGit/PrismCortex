@@ -1,1 +1,162 @@
-{"server_url": "http://prismcortex-srv-d7a6d0.eastus.azurecontainer.io:8080", "timestamp": 1782701193.6, "ingest": {"n": 16, "committed": 14, "skipped": 2, "staged": 0, "latency_ms": {"p50": 3076.05, "p95": 7575.89, "p99": 12604.58, "max": 12604.58}}, "determinism": {"queries": 6, "repeats": 5, "all_byte_identical": true, "cache_hits": 24, "cache_misses": 6, "miss_latency_ms": {"p50": 705.71, "p95": 1302.0}, "hit_latency_ms": {"p50": 5.5, "p95": 7.85}}, "reconsolidation": {"before": "The deploy budget is $40,000 per quarter.", "after": "$55,000", "answer_changed": true, "superseded_retained": 1, "audit": {"total_edges": 31, "current": 30, "superseded_retained": 1}}, "consolidation": {"path": "staged->sleep", "conflict_outcome": "staged", "answer_updated": true, "history_retained": true}, "throughput": {"requests": 240, "concurrency": 20, "duration_s": 6.39, "rps": 37.5, "latency_ms": {"p50": 130.99, "p95": 233.54, "p99": 265.94}}, "memory": {"raw_bytes_ingested": 14880, "gist_bytes": 4477, "index_bytes_est": 12288, "graph_nodes": 48, "graph_current_edges": 31, "compression_ratio_gist": 3.32, "compression_ratio_with_index": 0.89, "session_turns": 675, "edges_before_session": 31}, "server_metrics": {"backend": "prism", "uptime_s": 349.9, "counts": {"digest": 694, "recall": 275, "sleep": 1, "errors": 0}, "cache_hits": 266, "cache_misses": 9, "cache_hit_rate": 0.9673, "gemini_calls": 28, "graph_version": 17, "latency_ms": {"digest": {"n": 694, "p50": 0.08, "p95": 0.4, "p99": 3108.56}, "recall": {"n": 275, "p50": 20.91, "p95": 84.6, "p99": 852.12}}}, "cost": {"gemini_calls": 28, "cache_hit_rate": 0.9673, "recalls_total": 275}}
+{
+  "server_url": "http://prismcortex-srv-d7a6d0.eastus.azurecontainer.io:8080",
+  "timestamp": 1782779571.2,
+  "ingest": {
+    "n": 16,
+    "committed": 14,
+    "skipped": 2,
+    "staged": 0,
+    "latency_ms": {
+      "p50": 2887.33,
+      "p95": 5084.4,
+      "p99": 12600.61,
+      "max": 12600.61
+    }
+  },
+  "determinism": {
+    "queries": 6,
+    "repeats": 5,
+    "all_byte_identical": true,
+    "cache_hits": 24,
+    "cache_misses": 6,
+    "miss_latency_ms": {
+      "p50": 723.59,
+      "p95": 849.39
+    },
+    "hit_latency_ms": {
+      "p50": 5.48,
+      "p95": 7.99
+    }
+  },
+  "reconsolidation": {
+    "before": "Our deploy budget is $40,000.",
+    "after": "$55,000 per quarter",
+    "answer_changed": true,
+    "superseded_retained": 1,
+    "audit": {
+      "total_edges": 30,
+      "current": 29,
+      "superseded_retained": 1
+    }
+  },
+  "consolidation": {
+    "path": "staged->sleep",
+    "conflict_outcome": "staged",
+    "answer_updated": true,
+    "history_retained": true
+  },
+  "throughput": {
+    "requests": 240,
+    "concurrency": 20,
+    "duration_s": 1.7,
+    "rps": 141.4,
+    "latency_ms": {
+      "p50": 141.6,
+      "p95": 158.96,
+      "p99": 173.26
+    }
+  },
+  "load": {
+    "recall": {
+      "total": 2000,
+      "concurrency": 50,
+      "timeout_s": 30.0,
+      "duration_s": 522.47,
+      "rps": 3.8,
+      "errors": 124,
+      "error_rate": 0.062,
+      "error_types": {
+        "URLError": 124
+      },
+      "latency_ms": {
+        "p50": 117.81,
+        "p95": 124108.35,
+        "p99": 124138.87
+      }
+    },
+    "digest": {
+      "total": 400,
+      "concurrency": 16,
+      "timeout_s": 90.0,
+      "duration_s": 238.99,
+      "rps": 1.7,
+      "errors": 0,
+      "error_rate": 0.0,
+      "error_types": {},
+      "latency_ms": {
+        "p50": 34.63,
+        "p95": 64001.88,
+        "p99": 191239.86
+      }
+    },
+    "mixed": {
+      "total": 500,
+      "concurrency": 20,
+      "timeout_s": 90.0,
+      "duration_s": 45.22,
+      "rps": 11.1,
+      "errors": 0,
+      "error_rate": 0.0,
+      "error_types": {},
+      "latency_ms": {
+        "p50": 120.31,
+        "p95": 6745.56,
+        "p99": 15315.29
+      }
+    },
+    "errors": 124,
+    "total": 2900,
+    "error_rate": 0.04276,
+    "slo_pass": false
+  },
+  "memory": {
+    "tenant": "default",
+    "region": "default",
+    "raw_bytes_ingested": 18740,
+    "gist_bytes": 3604,
+    "index_bytes_est": 23552,
+    "graph_nodes": 46,
+    "graph_current_edges": 30,
+    "compression_ratio_gist": 5.2,
+    "ann_enabled": true,
+    "session_turns": 675,
+    "edges_before_session": 30
+  },
+  "server_metrics": {
+    "backend": "prism",
+    "uptime_s": 1313.9,
+    "counts": {
+      "digest": 1194,
+      "recall": 2563,
+      "sleep": 1,
+      "errors": 0,
+      "rate_limited": 0
+    },
+    "cache_hits": 2552,
+    "cache_misses": 11,
+    "cache_hit_rate": 0.9957,
+    "gemini_calls": 30,
+    "graph_version": 17,
+    "staging_pending": 0,
+    "conflicts_open": 0,
+    "latency_ms": {
+      "digest": {
+        "n": 1194,
+        "p50": 0.5,
+        "p95": 9.85,
+        "p99": 1861.4
+      },
+      "recall": {
+        "n": 2563,
+        "p50": 14.12,
+        "p95": 40.96,
+        "p99": 63.59
+      }
+    }
+  },
+  "cost": {
+    "gemini_calls": 30,
+    "cache_hit_rate": 0.9957,
+    "recalls_total": 2563
+  }
+}

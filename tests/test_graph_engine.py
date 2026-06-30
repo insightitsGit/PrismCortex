@@ -174,9 +174,9 @@ def test_sleep_resolves_staged_conflict_keeping_history():
 def test_sleep_resolves_both_staged_despite_relation_wording():
     """The adversarial fix: two conflicting facts staged together, with *different*
     relation phrasings, must still be detected as one conflict and resolved."""
-    from prismcortex.engine import _norm_relation
+    from prismcortex.labels import norm_relation
 
-    assert _norm_relation("is scheduled for") == _norm_relation("scheduled for")
+    assert norm_relation("is scheduled for") == norm_relation("scheduled for")
     store = InMemoryGraphStore()
     proj = HashingProjector()
     store.apply(StateDelta(ops=[
@@ -317,3 +317,89 @@ def test_reinforce_raises_weight():
     sub = store.retrieve(HashingProjector().embed("amin"), k=5)
     amin = next(n for n in sub.nodes if n.id == "n_amin")
     assert amin.weight > 1.0
+
+
+def test_canonical_label_resolves_the_budget():
+    from prismcortex.models import Band, ExtractedEntity, ExtractedGist, ExtractedRelation, Provenance, Subgraph
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_b", label="deploy budget", embedding=proj.embed("deploy budget"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_v", label="$40,000", embedding=proj.embed("$40,000"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e1", src="n_b", dst="n_v", relation="is")),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    gist = ExtractedGist(
+        entities=[ExtractedEntity(label="the deploy budget"), ExtractedEntity(label="$55,000")],
+        relations=[ExtractedRelation(src="the deploy budget", dst="$55,000", relation="is")],
+    )
+    delta, uncertain = mem._calculate_delta(gist, Subgraph(), Band.NORMAL, Provenance(source_id="m"))
+    src_ops = [op for op in delta.ops if op.operation is Operation.REINFORCE]
+    assert src_ops and src_ops[0].target_id == "n_b"
+    assert uncertain
+
+
+def test_subject_token_overlap_coref():
+    from prismcortex.models import Band, ExtractedEntity, ExtractedGist, ExtractedRelation, Provenance, Subgraph
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_launch", label="product launch", embedding=proj.embed("product launch"))),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    gist = ExtractedGist(
+        entities=[ExtractedEntity(label="launch"), ExtractedEntity(label="June")],
+        relations=[ExtractedRelation(src="launch", dst="June", relation="scheduled for")],
+    )
+    delta, _ = mem._calculate_delta(gist, Subgraph(), Band.NORMAL, Provenance(source_id="m"))
+    edge_ops = [op for op in delta.ops if op.edge]
+    assert edge_ops and edge_ops[0].edge.src == "n_launch"
+
+
+def test_value_conflict_despite_relation_drift():
+    from prismcortex.models import Band, ExtractedEntity, ExtractedGist, ExtractedRelation, Provenance, Subgraph
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_launch", label="product launch", embedding=proj.embed("product launch"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_march", label="March", embedding=proj.embed("March"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e1", src="n_launch", dst="n_march", relation="is scheduled for")),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    gist = ExtractedGist(
+        entities=[ExtractedEntity(label="launch"), ExtractedEntity(label="June")],
+        relations=[ExtractedRelation(src="launch", dst="June", relation="date is")],
+    )
+    delta, uncertain = mem._calculate_delta(gist, Subgraph(), Band.NORMAL, Provenance(source_id="m"))
+    assert uncertain
+    edge_ops = [op for op in delta.ops if op.edge]
+    assert any(op.edge and op.edge.dst and op.reason == "conflicts with existing fact" for op in edge_ops)
+
+
+def test_crowded_graph_recall_includes_label_overlap():
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    for label in ["Acme Corp", "Acme Health", "Boston", "Denver", "React", "Go"]:
+        store.apply(StateDelta(ops=[DeltaOp(operation=Operation.ASSIMILATE, node=Node(id=f"n_{label}", label=label, embedding=proj.embed(label)))]))
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_launch", label="product launch", embedding=proj.embed("product launch"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_june", label="June", embedding=proj.embed("June"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e_launch", src="n_launch", dst="n_june", relation="scheduled for")),
+    ]))
+
+    class _Render:
+        model_id = "test"
+        def render(self, query, subgraph):
+            parts = [f"{n.label}" for n in subgraph.nodes]
+            return " ".join(parts)
+
+    mem = Memory(projector=proj, extractor=None, renderer=_Render(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    ans = mem.recall("When is the product launch?").answer.lower()
+    assert "june" in ans

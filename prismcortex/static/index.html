@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PrismCortex Audit Console</title>
+  <style>
+    :root { --bg: #0f1419; --panel: #1a2332; --text: #e7ecf3; --accent: #5b9bd5; --warn: #e6a23c; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1rem; }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+    .row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    input, button, textarea { background: var(--panel); border: 1px solid #334; color: var(--text); padding: 0.5rem; border-radius: 4px; }
+    input { min-width: 200px; }
+    textarea { width: 100%; min-height: 80px; }
+    button { background: var(--accent); border: none; cursor: pointer; font-weight: 600; }
+    section { background: var(--panel); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+    pre { white-space: pre-wrap; font-size: 0.85rem; overflow: auto; max-height: 320px; }
+    .warn { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <h1>PrismCortex Audit Console</h1>
+  <div class="row">
+    <label>API Key <input id="key" type="password" placeholder="X-API-Key" /></label>
+    <label>Base URL <input id="base" value="" placeholder="http://localhost:8080" /></label>
+  </div>
+
+  <section>
+    <h2>Recall &amp; Explain</h2>
+    <textarea id="query" placeholder="What is our deploy budget?"></textarea>
+    <div class="row" style="margin-top:0.5rem">
+      <button onclick="recall()">Recall</button>
+      <button onclick="explain()">Explain</button>
+      <button onclick="replayCert()">Replay certificate</button>
+      <input id="at" placeholder="Time-travel ISO (optional)" />
+      <button onclick="recallAt()">Recall @ time</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+
+  <section>
+    <h2>Conflicts &amp; Audit</h2>
+    <div class="row">
+      <button onclick="conflicts()">List conflicts</button>
+      <button onclick="audit()">Audit stats</button>
+      <button onclick="dashboard()">Dashboard</button>
+    </div>
+    <pre id="auditOut"></pre>
+  </section>
+
+  <script>
+    function base() { return document.getElementById('base').value || ''; }
+    function headers() {
+      const h = { 'Content-Type': 'application/json' };
+      const k = document.getElementById('key').value;
+      if (k) h['X-API-Key'] = k;
+      return h;
+    }
+    async function api(path, opts = {}) {
+      const r = await fetch(base() + path, { ...opts, headers: { ...headers(), ...(opts.headers || {}) } });
+      const t = await r.text();
+      try { return JSON.stringify(JSON.parse(t), null, 2); } catch { return t; }
+    }
+    async function recall() {
+      const q = document.getElementById('query').value;
+      document.getElementById('out').textContent = await api('/recall', { method: 'POST', body: JSON.stringify({ query: q }) });
+    }
+    async function explain() {
+      const q = document.getElementById('query').value;
+      document.getElementById('out').textContent = await api('/explain', { method: 'POST', body: JSON.stringify({ query: q }) });
+    }
+    async function replayCert() {
+      const q = encodeURIComponent(document.getElementById('query').value);
+      document.getElementById('out').textContent = await api('/replay_certificate?query=' + q);
+    }
+    async function recallAt() {
+      const q = document.getElementById('query').value;
+      const at = document.getElementById('at').value;
+      const url = '/recall_at' + (at ? '?at=' + encodeURIComponent(at) : '');
+      document.getElementById('out').textContent = await api(url, { method: 'POST', body: JSON.stringify({ query: q }) });
+    }
+    async function conflicts() {
+      document.getElementById('auditOut').textContent = await api('/conflicts');
+    }
+    async function audit() {
+      document.getElementById('auditOut').textContent = await api('/audit');
+    }
+    async function dashboard() {
+      document.getElementById('auditOut').textContent = await api('/dashboard');
+    }
+  </script>
+</body>
+</html>

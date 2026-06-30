@@ -34,12 +34,14 @@ PASS=$(az acr credential show -n "$ACR" --query 'passwords[0].value' -o tsv)
 echo "==> [3/6] cloud build image (no local docker)"
 az acr build -r "$ACR" -t "$IMG" . -o none
 
-echo "==> [4/6] deploy SERVER (public :8080)"
+echo "==> [4/6] deploy SERVER (public :8080, 4 vCPU / 8 GB)"
 az container create -g "$RG" -n "$SRV" --image "$LOGIN/$IMG" \
   --registry-login-server "$LOGIN" --registry-username "$USER" --registry-password "$PASS" \
-  --cpu 1 --memory 1.5 --os-type Linux --restart-policy Never \
+  --cpu 4 --memory 8 --os-type Linux --restart-policy Never \
   --ip-address Public --ports 8080 --dns-name-label "$DNS" \
-  --environment-variables ROLE=server PRISMCORTEX_DATA=/data PRISMCORTEX_BACKEND=lite \
+  --environment-variables ROLE=server PRISMCORTEX_DATA=/data PRISMCORTEX_BACKEND=prism \
+    PRISMCORTEX_USE_ANN=1 PRISMCORTEX_READ_POOL=64 PRISMCORTEX_MAX_CONCURRENT_DIGEST=16 \
+    UVICORN_LIMIT_CONCURRENCY=256 \
   --secure-environment-variables GEMINI_API_KEY="$GEMINI_API_KEY" -o none
 FQDN=$(az container show -g "$RG" -n "$SRV" --query ipAddress.fqdn -o tsv)
 echo "    server: http://$FQDN:8080"
