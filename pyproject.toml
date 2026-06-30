@@ -50,7 +50,7 @@ bench = ["mem0ai>=2.0", "zep-cloud>=2.0"]
 
 [project.urls]
 Homepage = "https://www.insightits.com/products/prismcortex.html"
-Documentation = "https://github.com/insightitsGit/PrismCortex#readme"
+Documentation = "https://github.com/insightitsGit/PrismCortex/blob/master/AGENTS.md"
 Repository = "https://github.com/insightitsGit/PrismCortex"
 "Bug Tracker" = "https://github.com/insightitsGit/PrismCortex/issues"
 

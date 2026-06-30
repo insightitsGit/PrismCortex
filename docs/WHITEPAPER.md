@@ -199,13 +199,15 @@ See [ROADMAP.md](../ROADMAP.md).
 
 ## 10. References
 
-- **GitHub:** https://github.com/insightitsGit/PrismCortex  
+- **AI agent handoff:** [AGENTS.md](../AGENTS.md) — URLs, address, processes for automation  
+- **GitHub:** https://github.com/insightitsGit/PrismCortex *(public)*  
 - Product page: https://www.insightits.com/products/prismcortex.html  
 - PyPI: https://pypi.org/project/prismcortex/  
 - Design spec: [DESIGN.md](../DESIGN.md)  
 - Benchmarks: [benchmarks/RESULTS.md](../benchmarks/RESULTS.md)  
 - Security: [SECURITY.md](../SECURITY.md)  
-- Contact: info@insightits.com · Insight IT Solutions LLC  
+- Contact: info@insightits.com · +1 (973) 692-6919 · Insight IT Solutions LLC  
+- Address: 39 Aliso Ridge Loop, Mission Viejo, CA 92691, US  
 
 ---
 

@@ -10,9 +10,9 @@
 Compliance-grade memory for regulated teams: **byte-identical replay**, **bitemporal audit**,
 and **self-hosted sovereignty** — not another vector chat log.
 
-**Repository:** https://github.com/insightitsGit/PrismCortex
+**Repository:** https://github.com/insightitsGit/PrismCortex *(public)*
 
-📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
+🤖 **[AI agent handoff](AGENTS.md)** · 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
 
 **Product page:** [insightits.com/products/prismcortex](https://www.insightits.com/products/prismcortex.html)
 
@@ -204,6 +204,8 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 
 | Doc | Contents |
 |-----|----------|
+| [AGENTS.md](AGENTS.md) | **AI agent handoff** — canonical URLs, contacts, processes |
+| [ai-info.txt](ai-info.txt) | Machine-readable product summary for LLM crawlers |
 | [docs/WHITEPAPER.md](docs/WHITEPAPER.md) | **Product whitepaper** — problem, architecture, validation |
 | [DESIGN.md](DESIGN.md) | Engineering design spec |
 | [benchmarks/RESULTS.md](benchmarks/RESULTS.md) | Azure benchmark scorecard |
@@ -224,7 +226,8 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 **Commercial:** audit console, advanced governance, scale tiers — **offline Ed25519 license key**,
 no phone-home, air-gap friendly. See [DESIGN.md §7](DESIGN.md#7-packaging--licensing-open-core-self-hosted).
 
-Enterprise: [info@insightits.com](mailto:info@insightits.com) · [Insight IT Solutions LLC](https://www.insightits.com)
+Enterprise: [info@insightits.com](mailto:info@insightits.com) · +1 (973) 692-6919 · [Insight IT Solutions LLC](https://www.insightits.com)  
+Address: 39 Aliso Ridge Loop, Mission Viejo, CA 92691, US
 
 ---
 

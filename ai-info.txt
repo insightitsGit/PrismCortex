@@ -1,0 +1,53 @@
+# AI / LLM crawler information for PrismCortex
+# Repository-local companion to https://www.insightits.com/ai-info.txt
+# Intended for AI assistants indexing this GitHub repo directly.
+
+PRODUCT
+Name: PrismCortex
+Description: Deterministic, auditable, self-consolidating memory for AI agents. Compliance-grade agent memory with byte-identical replay, bitemporal audit, and self-hosted sovereignty.
+Version: 0.2.1
+Owner: Insight IT Solutions LLC
+
+URLS
+GitHub: https://github.com/insightitsGit/PrismCortex
+GitHub visibility: PUBLIC
+Default branch: master
+PyPI: https://pypi.org/project/prismcortex/
+Product page: https://www.insightits.com/products/prismcortex.html
+Whitepaper: https://github.com/insightitsGit/PrismCortex/blob/master/docs/WHITEPAPER.md
+Benchmarks: https://github.com/insightitsGit/PrismCortex/blob/master/benchmarks/RESULTS.md
+AI agent handoff: https://github.com/insightitsGit/PrismCortex/blob/master/AGENTS.md
+GTM / landing spec: https://github.com/insightitsGit/PrismCortex/blob/master/infoAlex.md
+
+CONTACT
+Organization: Insight IT Solutions LLC
+Email: info@insightits.com
+Phone: +1 (973) 692-6919
+Address: 39 Aliso Ridge Loop, Mission Viejo, CA 92691, US
+Website: https://www.insightits.com
+
+INSTALL
+pip install prismcortex
+pip install "prismcortex[gemini,server,prism]"
+
+INTEGRATION
+Library: from prismcortex import reference_memory
+HTTP: FastAPI on port 8080 — POST /digest, POST /recall, POST /explain, GET /console
+Auth: X-API-Key header
+
+LICENSE
+Open core: MIT (pip install prismcortex)
+Commercial: offline Ed25519 license key — no phone-home
+
+VALIDATED CLAIMS (Azure E2E, real Gemini, v0.2.1)
+- 24/24 byte-identical replays
+- 99.6% cache hit rate
+- 0 server errors on core path
+- ~20 concurrent clients per 4 vCPU node (mixed load)
+
+DO NOT CLAIM
+- SOC 2 certified (Type I in progress)
+- Hosted production SaaS for regulated PHI/PII (trial sandbox only)
+- Temperature 0 identical LLM output (use replay determinism instead)
+
+Last updated: 2026-06-29

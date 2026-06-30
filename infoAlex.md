@@ -2,10 +2,14 @@
 
 > **Audience:** AI agents and humans building the **insightits.com** landing page, Stripe/checkout,
 > trial provisioning, and sales collateral.  
+> **Start here for URLs & process:** [AGENTS.md](AGENTS.md) — canonical links, address, deploy/publish steps.  
 > **Framework:** [Alex Hormozi playbook](../alex-hormozi.md) — Value Equation, Grand Slam Offer.  
 > **Product:** PrismCortex — deterministic, auditable, self-consolidating memory for AI agents.  
+> **GitHub (public):** https://github.com/insightitsGit/PrismCortex  
+> **PyPI:** https://pypi.org/project/prismcortex/  
 > **Company site:** https://www.insightits.com (production Azure; Flask/React stack per site README)  
-> **Maintainer:** Insight IT Solutions LLC · info@insightits.com · +1 (973) 692-6919
+> **Maintainer:** Insight IT Solutions LLC · info@insightits.com · +1 (973) 692-6919  
+> **Address:** 39 Aliso Ridge Loop, Mission Viejo, CA 92691, US
 
 ---
 
@@ -252,7 +256,9 @@ key = issue_key(
 | SLA / reference SLO | `docs/SLA.md` |
 | SOC 2 readiness | `docs/SOC2_ROADMAP.md` |
 | Security | `SECURITY.md` + pen-test status on website |
-| GitHub | https://github.com/insightitsGit/PrismCortex |
+| GitHub | https://github.com/insightitsGit/PrismCortex (**public**) |
+| PyPI | https://pypi.org/project/prismcortex/ |
+| AI handoff doc | [AGENTS.md](AGENTS.md) |
 
 ---
 
@@ -321,6 +327,7 @@ Follow existing product pattern:
 ## 10. Agent handoff — how to implement on insightits.com
 
 > **For the website implementation agent.** PrismCortex repo is separate from the marketing site repo.
+> **Canonical URLs, address, and step-by-step processes:** read [AGENTS.md](AGENTS.md) first.
 > Site stack (per insightits.com): Python/Flask backend, React/Vite frontend, AWS/Azure hosting.
 
 ### Phase A — Static landing (Week 1)
@@ -455,10 +462,12 @@ Auth header: `X-API-Key: <trial-key>`
 | License | MIT core + Ed25519 commercial key |
 | Trial | 30 days hosted sandbox + time-limited key |
 | Production | Self-hosted Docker/library + annual key |
-| GitHub | insightitsGit/PrismCortex |
+| GitHub | https://github.com/insightitsGit/PrismCortex (public) |
+| PyPI | https://pypi.org/project/prismcortex/ |
 | Contact | info@insightits.com · +1 (973) 692-6919 |
+| Address | 39 Aliso Ridge Loop, Mission Viejo, CA 92691, US |
 | Related products | PrismRAG, PrismLang, PrismResonance, CHORUS (insightits.com/products/) |
 
 ---
 
-*Single source of truth for landing page agents. Product: [README.md](README.md), [ROADMAP.md](ROADMAP.md), [benchmarks/RESULTS.md](benchmarks/RESULTS.md), [docs/SLA.md](docs/SLA.md). Framework: [alex-hormozi.md](../alex-hormozi.md).*
+*Single source of truth for landing page agents. Canonical URLs/process: [AGENTS.md](AGENTS.md). Product: [README.md](README.md), [ROADMAP.md](ROADMAP.md), [benchmarks/RESULTS.md](benchmarks/RESULTS.md), [docs/SLA.md](docs/SLA.md). Framework: [alex-hormozi.md](../alex-hormozi.md).*
