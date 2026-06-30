@@ -94,3 +94,38 @@ def test_metrics_without_building_memory(monkeypatch):
     monkeypatch.setattr(server, "_tenant_mgr", None)
     c = TestClient(server.app)
     assert c.get("/metrics", headers={"x-api-key": "sekrit"}).status_code == 200
+
+
+def test_rbac_enforced_through_server(monkeypatch):
+    """RBAC is enforced at the endpoint (403 happens BEFORE any Gemini call)."""
+    import json as _json
+
+    monkeypatch.setenv("PRISMCORTEX_API_KEYS", _json.dumps({
+        "rk": {"tenant": "a", "roles": ["read"]},
+        "wk": {"tenant": "a", "roles": ["read", "write"]},
+    }))
+    reload_keys()
+    monkeypatch.setattr(server, "_memory", None)
+    monkeypatch.setattr(server, "_tenant_mgr", None)
+    c = TestClient(server.app)
+    assert c.post("/digest", json={"text": "x"}, headers={"x-api-key": "rk"}).status_code == 403   # read can't write
+    assert c.post("/forget", json={"source_id": "s"}, headers={"x-api-key": "rk"}).status_code == 403  # read can't erase
+    assert c.post("/forget", json={"source_id": "s"}, headers={"x-api-key": "wk"}).status_code == 403  # write != forget/admin
+    assert c.post("/recall", json={"query": "q"}, headers={"x-api-key": "nope"}).status_code == 401   # unknown key
+
+
+def test_tenant_manager_isolates_graphs(monkeypatch):
+    """A fact written for one tenant is unreachable from another — the isolation guarantee."""
+    from prismcortex.tenant import TenantMemoryManager
+
+    mgr = TenantMemoryManager("/tmp/pc-test", "lite", use_ann=False)
+    monkeypatch.setattr(mgr, "_build", lambda tid, region: (_mem(tenant=tid), None))
+    mem_a, _ = mgr.get("acme")
+    mem_b, _ = mgr.get("globex")
+    assert mem_a is not mem_b                                   # separate memory per tenant
+    proj = HashingProjector(dim=64)
+    mem_a.store.apply(StateDelta(ops=[DeltaOp(operation=Operation.ASSIMILATE,
+        node=Node(id="x", label="acme-secret", embedding=proj.embed("acme-secret")))]))
+    assert mem_a.store.find_node_by_label("acme-secret") is not None
+    assert mem_b.store.find_node_by_label("acme-secret") is None   # globex cannot see acme's fact
+    assert mgr.get("acme")[0] is mem_a                          # stable + cached per tenant
