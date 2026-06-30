@@ -199,6 +199,7 @@ See [ROADMAP.md](../ROADMAP.md).
 
 ## 10. References
 
+- **GitHub:** https://github.com/insightitsGit/PrismCortex  
 - Product page: https://www.insightits.com/products/prismcortex.html  
 - PyPI: https://pypi.org/project/prismcortex/  
 - Design spec: [DESIGN.md](../DESIGN.md)  

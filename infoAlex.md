@@ -252,7 +252,7 @@ key = issue_key(
 | SLA / reference SLO | `docs/SLA.md` |
 | SOC 2 readiness | `docs/SOC2_ROADMAP.md` |
 | Security | `SECURITY.md` + pen-test status on website |
-| GitHub | `https://github.com/insightitsGit/PrismCortex` (private — link when public) |
+| GitHub | https://github.com/insightitsGit/PrismCortex |
 
 ---
 

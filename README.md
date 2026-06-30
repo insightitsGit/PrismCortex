@@ -3,11 +3,14 @@
 [![PyPI](https://img.shields.io/pypi/v/prismcortex)](https://pypi.org/project/prismcortex/)
 [![Python 3.10+](https://img.shields.io/pypi/pyversions/prismcortex)](https://pypi.org/project/prismcortex/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/github/stars/insightitsGit/PrismCortex?style=social)](https://github.com/insightitsGit/PrismCortex)
 
 **Deterministic, auditable, self-consolidating memory for AI agents.**
 
 Compliance-grade memory for regulated teams: **byte-identical replay**, **bitemporal audit**,
 and **self-hosted sovereignty** — not another vector chat log.
+
+**Repository:** https://github.com/insightitsGit/PrismCortex
 
 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
 
