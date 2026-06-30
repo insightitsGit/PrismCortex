@@ -84,8 +84,11 @@ Artifact: `benchmarks/results/competitive/locomo-smoke/locomo_results_*.json`
 
 **Full LoCoMo** (~1,540 questions, 419 chunks × 10 conversations) requires overnight run + significant Gemini cost. Compare to Mem0 **91.6%** only after full run.
 
+### Methodology note
+
 - Memory **search** returns **graph facts** (not PrismCortex rendered answers) — fair comparison to Mem0 retrieval → answerer → judge.
 - Ingest calls `digest()` per message chunk → **real Gemini extraction** (costly, same order of magnitude as Mem0 OSS ingest).
+- Use `PRISM_BENCH_INGEST_LIMIT=N` for smoke runs only; remove for full benchmark.
 
 ---
 
