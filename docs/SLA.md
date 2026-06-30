@@ -6,7 +6,7 @@ Annual **per-deployment / per-site** license (see DESIGN.md §7). Not metered by
 
 ## Deck-ready one-liners (v0.2.1, Azure-validated)
 
-Use these in pitches and slides. Evidence: [benchmarks/RESULTS.md](../benchmarks/RESULTS.md) (ACR build `ca9`, 2026-06-30).
+Use these in pitches and slides. Evidence: [benchmarks/RESULTS.md](../benchmarks/RESULTS.md) (ACR build `ca9`, 2026-06-30). Load methodology: [LOAD_BENCHMARK.md](LOAD_BENCHMARK.md).
 
 **Product (what we sell):**
 

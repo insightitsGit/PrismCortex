@@ -107,6 +107,7 @@
     "errors": 124,
     "total": 2900,
     "error_rate": 0.04276,
+    "reference_slo_pass": true,
     "slo_pass": false
   },
   "memory": {

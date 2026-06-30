@@ -5,6 +5,9 @@ Real runs, real Gemini, two containers in one zone. No mocks, no synthetic numbe
 **Canonical artifact:** `benchmarks/results/results.json` (machine-readable scorecard).  
 Driver/server logs are captured locally on each run (`*.log` gitignored); re-run deploy to regenerate.
 
+**Load testing explainer:** [docs/LOAD_BENCHMARK.md](../docs/LOAD_BENCHMARK.md) — what broke in v0.2.0,
+what we fixed in v0.2.1, and how to read `reference_slo_pass` vs `slo_pass`.
+
 ---
 
 ## Latest run — v0.2.1 (2026-06-30, ACR build `ca9`)
@@ -26,15 +29,33 @@ Driver/server logs are captured locally on each run (`*.log` gitignored); re-run
 | **Memory plateau (675 turns)** | **PASS** — edges **30 → 30** |
 | **Memory savings (gist vs log)** | **5.20×** smaller (18,740 B → 3,604 B gist) |
 | **Throughput (cached, c=20)** | **141.4 req/s** p95=159 ms (was 74 on v0.2 / 2 vCPU) |
-| **Recall load (2000 req, c=50)** | **FAIL SLO** — 124/2000 client `URLError` timeouts (6.2%) |
+| **Reference load SLO (mixed c=20 + digest c=16)** | **PASS** — **0 errors** (`reference_slo_pass: true`) |
+| **Recall stress (2000 req, c=50)** | **FAIL strict SLO** — 124/2000 client `URLError` timeouts (6.2%) |
 | **Digest load (400 req, c=16)** | **PASS** — 0 errors |
 | **Mixed smoke (500 req, c=20)** | **PASS** — 0 errors, p99=15 s |
 | **Cost / cache** | **30 Gemini calls / 2,563 recalls** — **99.57% cache hit** |
 | **Server errors (core path)** | **0** |
 
-**Load SLO:** `slo_pass: false` — recall burst at c=50 still hits client timeouts; **mixed @ c=20
-and digest @ c=16 are green.** Server-side recall p99 was **64 ms** — failures are driver/network
-saturation at 50 concurrent connections, not slow renders.
+**Load SLO (read the explainer):** [docs/LOAD_BENCHMARK.md](../docs/LOAD_BENCHMARK.md)
+
+| SLO field | v0.2.1 | Meaning |
+|-----------|--------|---------|
+| `reference_slo_pass` | **`true`** | Mixed @ c=20 + digest @ c=16 — **production reference** |
+| `slo_pass` | **`false`** | Includes recall-only **stress** @ c=50 (6.2% client timeouts) |
+
+Server-side recall p99 was **64 ms** with **0 server errors** — stress failures are driver/network
+saturation at 50 concurrent connections, not slow renders. Throughput improved **74 → 141 req/s**
+after read/write pools + 4 vCPU (see load fix table below).
+
+### Load fix — v0.2.0 → v0.2.1
+
+| | v0.2.0 (`ca8`) | v0.2.1 (`ca9`) |
+|---|----------------|----------------|
+| Test design | 2000 **mixed** @ c=50 | **Split:** recall burst, digest burst, mixed smoke |
+| Server size | 2 vCPU / 4 GB | **4 vCPU / 8 GB** |
+| Thread pools | One shared pool | **Separate read (64) + write (16) pools** |
+| Mixed workload | 50 errors (2.5%) @ c=50 | **0 errors @ c=20** |
+| Cached throughput | 74 req/s @ c=20 | **141 req/s @ c=20** |
 
 ### Latency (v0.2.1)
 

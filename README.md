@@ -212,6 +212,7 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 | [ROADMAP.md](ROADMAP.md) | Enterprise GA plan + honest gaps |
 | [docs/SLA.md](docs/SLA.md) | Reference SLOs + commercial tiers |
 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing guide (~20 concurrent clients / 4 vCPU) |
+| [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | **Load test explainer** — what we fixed, how to read SLO fields |
 | [docs/SCALING.md](docs/SCALING.md) | Horizontal read scaling story |
 | [docs/SUPPORT.md](docs/SUPPORT.md) | 24×7 Enterprise support model |
 | [docs/SOC2_ROADMAP.md](docs/SOC2_ROADMAP.md) | Compliance readiness |

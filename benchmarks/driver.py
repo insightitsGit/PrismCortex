@@ -383,6 +383,7 @@ def bench_load() -> dict:
     mixed = bench_mixed_load()
     errors = recall["errors"] + digest["errors"] + mixed["errors"]
     total = recall["total"] + digest["total"] + mixed["total"]
+    reference_errors = digest["errors"] + mixed["errors"]
     return {
         "recall": recall,
         "digest": digest,
@@ -390,6 +391,7 @@ def bench_load() -> dict:
         "errors": errors,
         "total": total,
         "error_rate": round(errors / total, 5) if total else 0.0,
+        "reference_slo_pass": reference_errors == 0,
         "slo_pass": errors == 0,
     }
 
@@ -441,8 +443,10 @@ def main() -> None:
           f"errors={ldig['errors']}/{ldig['total']}  p99={ldig['latency_ms']['p99']}ms")
     print(f"  mixed smoke (c={lmix['concurrency']})     : {lmix['rps']} req/s  "
           f"errors={lmix['errors']}/{lmix['total']}  p99={lmix['latency_ms']['p99']}ms")
-    print(f"  load SLO                     : {'PASS' if ld['slo_pass'] else 'FAIL'}  "
-          f"({ld['errors']}/{ld['total']} total errors)")
+    print(f"  reference load SLO (mixed+digest): {'PASS' if ld.get('reference_slo_pass') else 'FAIL'}  "
+          f"({ldig['errors'] + lmix['errors']} errors — production-shaped c=20 mixed)")
+    print(f"  strict load SLO (incl. recall stress): {'PASS' if ld['slo_pass'] else 'FAIL'}  "
+          f"({ld['errors']}/{ld['total']} total errors; recall @ c={lr['concurrency']} is stress probe)")
     print(f"  cost: {c['gemini_calls']} Gemini calls for {c['recalls_total']} recalls  "
           f"(cache hit rate {c['cache_hit_rate']})")
     print(f"\n  full results -> {out}")

@@ -54,6 +54,7 @@
 | 7 | [ROADMAP.md](ROADMAP.md) | GA gaps and honest maturity |
 | 8 | [docs/SLA.md](docs/SLA.md) | Reference SLOs and commercial tiers |
 | 9 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing (~20 concurrent clients / 4 vCPU) |
+| 10 | [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | Load test explainer — v0.2.0→v0.2.1 fix, SLO fields |
 | 10 | [SECURITY.md](SECURITY.md) | Security posture |
 
 **Website agents:** use [infoAlex.md](infoAlex.md) §9–§10 for landing page + trial implementation.
@@ -174,7 +175,7 @@ git push origin master
 | Do not say | Say instead |
 |------------|-------------|
 | SOC 2 certified | SOC 2-aligned controls; Type I in progress |
-| 50 concurrent clients, zero errors | ~20 concurrent clients / 4 vCPU (validated) |
+| 50 concurrent clients, zero errors | ~20 concurrent clients / 4 vCPU (reference SLO validated); c=50 is stress-only — see [LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) |
 | Hosted production for regulated PHI/PII | Trial sandbox for evaluation; production self-hosted |
 | Temperature 0 = identical LLM output | Replay determinism via content-addressed cache |
 | GitHub repo is private | Repo is **public** at insightitsGit/PrismCortex |
