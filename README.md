@@ -12,7 +12,7 @@ and **self-hosted sovereignty** — not another vector chat log.
 
 **Repository:** https://github.com/insightitsGit/PrismCortex *(public)*
 
-🤖 **[AI agent handoff](AGENTS.md)** · 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
+🤖 **[AI agent handoff](AGENTS.md)** · 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · ⚖️ **[How we compare](compare.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
 
 **Product page:** [insightits.com/products/prismcortex](https://www.insightits.com/products/prismcortex.html)
 
@@ -59,6 +59,24 @@ print(mem.recall("What's my deploy budget?").answer)        # → "$55,000"
 | Scale (50k facts, ANN) | **85% hit@8**, **74 ms** p95 retrieval |
 
 Details: [benchmarks/RESULTS.md](benchmarks/RESULTS.md) · [docs/WHITEPAPER.md](docs/WHITEPAPER.md)
+
+---
+
+## How we compare
+
+Mem0 and Zep lead **published accuracy benchmarks** (LoCoMo, LongMemEval, DMR). PrismCortex leads **compliance** — byte-identical replay, bitemporal audit, and self-hosted sovereignty.
+
+| | Mem0 *(published)* | Zep *(published)* | **PrismCortex** *(live)* |
+|---|---------------------|-------------------|---------------------------|
+| LoCoMo accuracy | **91.6%** | — | Full run pending |
+| Correction test ($40k→$55k) | Top hit stale in our OSS run | — | **Yes** — new value + audit trail |
+| Byte-identical replay | No | No | **24/24** on Azure |
+| Bitemporal audit (OSS) | Varies | Graph | **Yes** |
+| Self-hosted default | OSS + SaaS | SaaS | **Yes** |
+
+**Head-to-head:** same Gemini, same correction — PrismCortex surfaced **$55k** after update; Mem0 OSS top retrieval stayed **$40k** in our live test. Reproducible: [benchmarks/results/competitive/vs_mem0.json](benchmarks/results/competitive/vs_mem0.json).
+
+**Landing page spec for agents:** [compare.md](compare.md) · **Full technical comparison:** [docs/COMPETITIVE.md](docs/COMPETITIVE.md)
 
 ---
 
@@ -213,6 +231,7 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 | [docs/SLA.md](docs/SLA.md) | Reference SLOs + commercial tiers |
 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing guide (~20 concurrent clients / 4 vCPU) |
 | [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | **Load test explainer** — what we fixed, how to read SLO fields |
+| [compare.md](compare.md) | **Landing page spec** — comparison tables, copy blocks for insightits.com |
 | [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | **Market comparison** — Mem0/Zep, LoCoMo, head-to-head |
 | [docs/SCALING.md](docs/SCALING.md) | Horizontal read scaling story |
 | [docs/SUPPORT.md](docs/SUPPORT.md) | 24×7 Enterprise support model |
