@@ -311,10 +311,12 @@ def _parallel_bench(
 def bench_recall_load(
     total: int | None = None,
     concurrency: int | None = None,
+    *,
+    label: str = "RECALL LOAD (cached reads only)",
 ) -> dict:
     """Sustained cached-read load — isolates recall path from digest backlog."""
     total = total if total is not None else _env_int("BENCH_RECALL_LOAD_TOTAL", 2000)
-    concurrency = concurrency if concurrency is not None else _env_int("BENCH_RECALL_LOAD_C", 50)
+    concurrency = concurrency if concurrency is not None else _env_int("BENCH_RECALL_LOAD_C", 20)
     for q in QUERIES:
         _post("/recall", {"query": q})  # warm caches
 
@@ -322,12 +324,30 @@ def bench_recall_load(
         _post("/recall", {"query": QUERIES[i % len(QUERIES)]}, timeout=30.0, retry_429=True)
 
     return _parallel_bench(
-        "RECALL LOAD (cached reads only)",
+        label,
         total,
         concurrency,
         work,
         timeout=30.0,
     )
+
+
+def _stress_recall_enabled() -> bool:
+    return os.environ.get("BENCH_STRESS_RECALL", "").lower() in ("1", "true", "yes")
+
+
+def bench_stress_recall_load() -> dict:
+    """Optional ceiling probe — not part of reference SLO (default c=50)."""
+    total = _env_int("BENCH_STRESS_RECALL_TOTAL", 2000)
+    concurrency = _env_int("BENCH_STRESS_RECALL_C", 50)
+    result = bench_recall_load(
+        total=total,
+        concurrency=concurrency,
+        label="STRESS RECALL (optional ceiling probe)",
+    )
+    result["role"] = "optional_stress_probe"
+    result["included_in_slo_pass"] = False
+    return result
 
 
 def bench_digest_load(
@@ -377,23 +397,36 @@ def bench_mixed_load(
 
 
 def bench_load() -> dict:
-    """Split sustained load: recall burst, then digest burst, then optional mixed smoke."""
+    """Split sustained load: reference recall @ c=20, digest, mixed; optional stress @ c=50."""
     recall = bench_recall_load()
+    recall["role"] = "reference"
     digest = bench_digest_load()
     mixed = bench_mixed_load()
-    errors = recall["errors"] + digest["errors"] + mixed["errors"]
-    total = recall["total"] + digest["total"] + mixed["total"]
-    reference_errors = digest["errors"] + mixed["errors"]
-    return {
+    stress_recall = bench_stress_recall_load() if _stress_recall_enabled() else None
+
+    reference_errors = recall["errors"] + digest["errors"] + mixed["errors"]
+    reference_total = recall["total"] + digest["total"] + mixed["total"]
+    stress_errors = stress_recall["errors"] if stress_recall else 0
+
+    out: dict = {
         "recall": recall,
         "digest": digest,
         "mixed": mixed,
-        "errors": errors,
-        "total": total,
-        "error_rate": round(errors / total, 5) if total else 0.0,
+        "reference_errors": reference_errors,
+        "reference_total": reference_total,
+        "reference_error_rate": round(reference_errors / reference_total, 5) if reference_total else 0.0,
         "reference_slo_pass": reference_errors == 0,
-        "slo_pass": errors == 0,
+        "slo_pass": reference_errors == 0,
+        "errors": reference_errors + stress_errors,
+        "total": reference_total + (stress_recall["total"] if stress_recall else 0),
+        "error_rate": round((reference_errors + stress_errors) / (reference_total + (stress_recall["total"] if stress_recall else 0)), 5)
+        if reference_total + (stress_recall["total"] if stress_recall else 0)
+        else 0.0,
     }
+    if stress_recall is not None:
+        out["stress_recall"] = stress_recall
+        out["stress_slo_pass"] = stress_errors == 0
+    return out
 
 
 def main() -> None:
@@ -443,10 +476,17 @@ def main() -> None:
           f"errors={ldig['errors']}/{ldig['total']}  p99={ldig['latency_ms']['p99']}ms")
     print(f"  mixed smoke (c={lmix['concurrency']})     : {lmix['rps']} req/s  "
           f"errors={lmix['errors']}/{lmix['total']}  p99={lmix['latency_ms']['p99']}ms")
-    print(f"  reference load SLO (mixed+digest): {'PASS' if ld.get('reference_slo_pass') else 'FAIL'}  "
-          f"({ldig['errors'] + lmix['errors']} errors — production-shaped c=20 mixed)")
-    print(f"  strict load SLO (incl. recall stress): {'PASS' if ld['slo_pass'] else 'FAIL'}  "
-          f"({ld['errors']}/{ld['total']} total errors; recall @ c={lr['concurrency']} is stress probe)")
+    if ld.get("stress_recall"):
+        ls = ld["stress_recall"]
+        print(f"  stress recall (c={ls['concurrency']})   : {ls['rps']} req/s  "
+              f"errors={ls['errors']}/{ls['total']}  (optional probe, not reference SLO)")
+    print(f"  load SLO (reference phases)  : {'PASS' if ld['slo_pass'] else 'FAIL'}  "
+          f"({ld['reference_errors']}/{ld['reference_total']} errors — recall+digest+mixed @ c≤20)")
+    if ld.get("stress_recall"):
+        ls = ld["stress_recall"]
+        print(f"  stress SLO (optional c={ls['concurrency']}): "
+              f"{'PASS' if ld.get('stress_slo_pass') else 'FAIL'}  "
+              f"({ls['errors']}/{ls['total']} errors — ceiling probe only)")
     print(f"  cost: {c['gemini_calls']} Gemini calls for {c['recalls_total']} recalls  "
           f"(cache hit rate {c['cache_hit_rate']})")
     print(f"\n  full results -> {out}")

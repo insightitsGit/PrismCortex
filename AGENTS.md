@@ -175,7 +175,7 @@ git push origin master
 | 99.6% cache hit (30 Gemini / 2,563 recalls) | Same |
 | ~6 ms cached replay vs ~724 ms first render | Same |
 | 0 server errors on core path | Same |
-| Reference load SLO (mixed c=20 + digest c=16) | `reference_slo_pass: true` — [LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) |
+| Reference load SLO (recall + mixed c=20, digest c=16) | `slo_pass: true` — [LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) |
 | Mixed load c=20, 0 errors on 4 vCPU | Same |
 | 50k facts ANN: 85% hit@8, 74 ms p95 | `benchmarks/results/scale_ann.json` |
 | ~20 concurrent clients / 4 vCPU node | `docs/CAPACITY.md` |

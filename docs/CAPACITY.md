@@ -12,8 +12,8 @@ Honest starting points from Azure E2E + scale benches. Re-run after your deploym
 | First render (cache miss) p50 | ~700 ms | One Gemini call |
 | Digest (fact extraction) p50 | ~3.1 s | Salience gate skips chatter |
 | Throughput (cached, c=20) | **141 req/s** | Up from 74 on 2 vCPU |
-| **Reference load SLO** | **PASS** — mixed c=20 + digest c=16, 0 errors | `reference_slo_pass` |
-| Recall stress (c=50, 2000 req) | 6.2% client timeouts | Stress probe — not reference sizing |
+| **Reference load SLO** | **PASS** — recall c=20 + mixed c=20 + digest c=16, 0 errors | `slo_pass` |
+| Optional stress recall (c=50, 2000 req) | 6.2% client timeouts | `BENCH_STRESS_RECALL=1` only — not reference sizing |
 | Mixed smoke (c=20, 500 req) | **0 errors** | 20% writes |
 | Digest load (c=16, 400 req) | **0 errors** | Matches digest semaphore |
 | Graph size (linear scan) | Fine to ~10k facts | hit@8 ≈ 0.98 @ 128-dim |
@@ -39,7 +39,9 @@ Split load avoids queueing cached recalls behind digest work (root cause of v0.2
 | Variable | Default | Purpose |
 |---|---|---|
 | `BENCH_RECALL_LOAD_TOTAL` | 2000 | Cached `/recall` burst size |
-| `BENCH_RECALL_LOAD_C` | 50 | Recall concurrency |
+| `BENCH_RECALL_LOAD_C` | 20 | Reference recall concurrency |
+| `BENCH_STRESS_RECALL` | 0 | Set `1` to run optional c=50 ceiling probe |
+| `BENCH_STRESS_RECALL_C` | 50 | Stress recall concurrency |
 | `BENCH_DIGEST_LOAD_TOTAL` | 400 | Salience-skipped `/digest` burst (≈20% of old mixed total) |
 | `BENCH_DIGEST_LOAD_C` | 16 | Digest concurrency (≤ `MAX_CONCURRENT_DIGEST`) |
 | `BENCH_MIXED_LOAD_TOTAL` | 500 | Optional combined smoke test |

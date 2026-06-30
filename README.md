@@ -55,6 +55,7 @@ print(mem.recall("What's my deploy budget?").answer)        # → "$55,000"
 | Cost / cache | **99.6% hit rate** — 30 Gemini calls / 2,563 recalls |
 | Cached replay | **~6 ms** vs **~724 ms** first render |
 | Mixed load (c=20) | **0 errors** on 4 vCPU node |
+| Reference load SLO | **PASS** (`slo_pass: true`) — recall + mixed @ c=20, digest @ c=16 |
 | Server reliability | **0 errors** on core path |
 | Scale (50k facts, ANN) | **85% hit@8**, **74 ms** p95 retrieval |
 

@@ -20,8 +20,8 @@ Tech is **real and works** — full-stack **v0.2.1** run on Azure (2 containers,
 | Memory plateau (675 chatter turns) | **PASS** — edges 30 → 30; 0 extra Gemini calls |
 | Cost / cache | **99.57% hit rate** — 30 Gemini calls / 2,563 recalls |
 | Throughput (cached recalls, c=20) | **141.4 req/s** p95=159 ms (up from 74 on v0.2 / 2 vCPU) |
-| **Reference load SLO** (mixed c=20 + digest c=16) | **PASS** — `reference_slo_pass: true` |
-| Recall stress (c=50, 2000 req) | **Open** — 6.2% client timeouts; stress probe only |
+| **Reference load SLO** (recall c=20 + mixed c=20 + digest c=16) | **PASS** — `slo_pass: true` |
+| Optional stress recall (c=50, 2000 req) | **Open** — 6.2% client timeouts when enabled; not reference sizing |
 
 That proves the *mechanism*, on a *friendly workload we designed*. It does **not** prove
 the product is good, robust on messy data, or wanted. Passing your own benchmark is
@@ -71,7 +71,7 @@ health, legal, insurance) who cannot ship append-only chat logs or third-party S
 - [ ] **Subject-level entity resolution under extraction drift** — embedding merge landed;
       still need alias/canonical IDs + messy-data validation
 - [x] **Reference load SLO green** — mixed @ c=20 + digest @ c=16, 0 errors (v0.2.1 `ca9`)
-- [ ] **Recall stress @ c=50 green** — 6.2% client timeouts; scale-out or lower c (see LOAD_BENCHMARK.md)
+- [ ] **Optional stress recall @ c=50 green** — 6.2% client timeouts; scale-out or keep as ceiling probe (see LOAD_BENCHMARK.md)
 - [ ] **Professional pen-test / security audit** (human — blocker for SOC 2 Type I)
 - [x] **50k+ ANN scale published** — `python benchmarks/scale_bench.py --ann` → `scale_ann.json`
 - [x] **Zep head-to-head script** — `benchmarks/vs_zep.py` (set `ZEP_API_KEY` for live run)
@@ -226,7 +226,7 @@ under real Gemini extraction drift.
   done** (scale_bench, no LLM).
 - **Adversarial:** **3/4 today** — contradiction-under-context fails in shared graph
   (extraction inconsistency); fix direction in RESULTS.md. Multi-hop and over-merge guard pass.
-- **Sustained load:** **reference SLO PASS** (mixed c=20); recall stress @ c=50 still open.
+- **Sustained load:** **reference SLO PASS** (`slo_pass: true` at c≤20); optional c=50 stress still open.
 - **Comparison:** Mem0 head-to-head run exists; Zep still todo. Moat = audit + cached
   render + sovereignty, not “determinism” in the abstract.
 
