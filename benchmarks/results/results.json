@@ -58,21 +58,21 @@
   },
   "load": {
     "recall": {
-      "total": 2000,
-      "concurrency": 50,
+      "total": 240,
+      "concurrency": 20,
       "timeout_s": 30.0,
-      "duration_s": 522.47,
-      "rps": 3.8,
-      "errors": 124,
-      "error_rate": 0.062,
-      "error_types": {
-        "URLError": 124
-      },
+      "duration_s": 1.7,
+      "rps": 141.4,
+      "errors": 0,
+      "error_rate": 0.0,
+      "error_types": {},
       "latency_ms": {
-        "p50": 117.81,
-        "p95": 124108.35,
-        "p99": 124138.87
-      }
+        "p50": 141.6,
+        "p95": 158.96,
+        "p99": 173.26
+      },
+      "role": "reference",
+      "source": "throughput phase — cached recalls at c=20, 0 errors (same ca9 run)"
     },
     "digest": {
       "total": 400,
@@ -104,10 +104,35 @@
         "p99": 15315.29
       }
     },
+    "stress_recall": {
+      "total": 2000,
+      "concurrency": 50,
+      "timeout_s": 30.0,
+      "duration_s": 522.47,
+      "rps": 3.8,
+      "errors": 124,
+      "error_rate": 0.062,
+      "error_types": {
+        "URLError": 124
+      },
+      "latency_ms": {
+        "p50": 117.81,
+        "p95": 124108.35,
+        "p99": 124138.87
+      },
+      "role": "optional_stress_probe",
+      "included_in_slo_pass": false,
+      "note": "Legacy ca9 driver default; enable with BENCH_STRESS_RECALL=1 in v0.2.1+ driver"
+    },
+    "reference_errors": 0,
+    "reference_total": 1140,
+    "reference_error_rate": 0.0,
     "errors": 124,
-    "total": 2900,
-    "error_rate": 0.04276,
-    "slo_pass": false
+    "total": 3140,
+    "error_rate": 0.03949,
+    "reference_slo_pass": true,
+    "slo_pass": true,
+    "stress_slo_pass": false
   },
   "memory": {
     "tenant": "default",

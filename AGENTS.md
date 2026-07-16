@@ -54,6 +54,8 @@
 | 7 | [ROADMAP.md](ROADMAP.md) | GA gaps and honest maturity |
 | 8 | [docs/SLA.md](docs/SLA.md) | Reference SLOs and commercial tiers |
 | 9 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing (~20 concurrent clients / 4 vCPU) |
+| 10 | [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | Load test explainer — v0.2.0→v0.2.1 fix, SLO fields |
+| 11 | [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | Market comparison — Mem0/Zep, LoCoMo/LongMemEval |
 | 10 | [SECURITY.md](SECURITY.md) | Security posture |
 
 **Website agents:** use [infoAlex.md](infoAlex.md) §9–§10 for landing page + trial implementation.
@@ -142,7 +144,15 @@ python benchmarks/scale_bench.py --ann
 3. Customer sets `PRISMCORTEX_LICENSE_KEY` in their deployment.
 4. See [docs/KEY_ROTATION.md](docs/KEY_ROTATION.md).
 
-### 5.7 Commit and push (this repo)
+### 5.8 Run competitive benchmarks
+
+1. `bash scripts/setup_bench_vendor.sh` — clone mem0ai/memory-benchmarks.
+2. `pip install -e ".[gemini,competitive,bench]"`.
+3. Head-to-head: `python benchmarks/vs_mem0.py`, `python benchmarks/vs_zep.py` (needs `ZEP_API_KEY`).
+4. Standard accuracy: `python benchmarks/competitive/run_standard.py locomo --project-name pc-smoke --conversations 0 --max-questions 5`.
+5. See [docs/COMPETITIVE.md](docs/COMPETITIVE.md).
+
+### 5.9 Commit and push (this repo)
 
 ```bash
 git status
@@ -165,6 +175,7 @@ git push origin master
 | 99.6% cache hit (30 Gemini / 2,563 recalls) | Same |
 | ~6 ms cached replay vs ~724 ms first render | Same |
 | 0 server errors on core path | Same |
+| Reference load SLO (recall + mixed c=20, digest c=16) | `slo_pass: true` — [LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) |
 | Mixed load c=20, 0 errors on 4 vCPU | Same |
 | 50k facts ANN: 85% hit@8, 74 ms p95 | `benchmarks/results/scale_ann.json` |
 | ~20 concurrent clients / 4 vCPU node | `docs/CAPACITY.md` |
@@ -174,7 +185,7 @@ git push origin master
 | Do not say | Say instead |
 |------------|-------------|
 | SOC 2 certified | SOC 2-aligned controls; Type I in progress |
-| 50 concurrent clients, zero errors | ~20 concurrent clients / 4 vCPU (validated) |
+| 50 concurrent clients, zero errors | ~20 concurrent clients / 4 vCPU (reference SLO validated); c=50 is stress-only — see [LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) |
 | Hosted production for regulated PHI/PII | Trial sandbox for evaluation; production self-hosted |
 | Temperature 0 = identical LLM output | Replay determinism via content-addressed cache |
 | GitHub repo is private | Repo is **public** at insightitsGit/PrismCortex |

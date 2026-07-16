@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-06-30T03:21:54Z",
+  "correction_workload": "benchmarks/results/competitive/vs_mem0.json",
+  "vs_zep": "benchmarks/results/competitive/vs_zep.json",
+  "locomo_smoke": {
+    "project": "pc-locomo-smoke",
+    "ingest_limit_chunks": 40,
+    "conversations": [0],
+    "questions": 3,
+    "top_200_accuracy_pct": 66.7,
+    "top_200_correct": 2,
+    "artifact": "benchmarks/results/competitive/locomo-smoke/locomo_results_20260629_202152.json",
+    "note": "Partial ingest — not comparable to Mem0 full LoCoMo 91.6%"
+  },
+  "published_reference": {
+    "mem0_locomo": 91.6,
+    "mem0_longmemeval": 94.8,
+    "zep_dmr": 94.8
+  }
+}

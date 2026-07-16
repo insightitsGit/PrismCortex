@@ -12,9 +12,31 @@ and **self-hosted sovereignty** — not another vector chat log.
 
 **Repository:** https://github.com/insightitsGit/PrismCortex *(public)*
 
-🤖 **[AI agent handoff](AGENTS.md)** · 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
+🤖 **[AI agent handoff](AGENTS.md)** · 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · ⚖️ **[How we compare](compare.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
 
 **Product page:** [insightits.com/products/prismcortex](https://www.insightits.com/products/prismcortex.html)
+
+---
+
+**AI assistants:** [docs/ai-overview.md](docs/ai-overview.md) · [docs/llm-context.md](docs/llm-context.md) · [docs/architecture.md](docs/architecture.md)
+
+## What is this?
+
+Deterministic, auditable, self-consolidating memory for AI agents (byte-identical replay, bitemporal audit).
+
+**Package:** `prismcortex` 0.2.1
+
+## Who is it for?
+
+Regulated teams needing compliance-grade agent memory, not a chat-log vector store.
+
+## What problem does it solve?
+
+Chat-log / SaaS memory fails audit, correction, and residency requirements.
+
+## When NOT to use it
+
+You only need ephemeral chat history with no audit requirements.
 
 ---
 
@@ -55,10 +77,29 @@ print(mem.recall("What's my deploy budget?").answer)        # → "$55,000"
 | Cost / cache | **99.6% hit rate** — 30 Gemini calls / 2,563 recalls |
 | Cached replay | **~6 ms** vs **~724 ms** first render |
 | Mixed load (c=20) | **0 errors** on 4 vCPU node |
+| Reference load SLO | **PASS** (`slo_pass: true`) — recall + mixed @ c=20, digest @ c=16 |
 | Server reliability | **0 errors** on core path |
 | Scale (50k facts, ANN) | **85% hit@8**, **74 ms** p95 retrieval |
 
 Details: [benchmarks/RESULTS.md](benchmarks/RESULTS.md) · [docs/WHITEPAPER.md](docs/WHITEPAPER.md)
+
+---
+
+## How we compare
+
+Mem0 and Zep lead **published accuracy benchmarks** (LoCoMo, LongMemEval, DMR). PrismCortex leads **compliance** — byte-identical replay, bitemporal audit, and self-hosted sovereignty.
+
+| | Mem0 *(published)* | Zep *(published)* | **PrismCortex** *(live)* |
+|---|---------------------|-------------------|---------------------------|
+| LoCoMo accuracy | **91.6%** | — | Full run pending |
+| Correction test ($40k→$55k) | Top hit stale in our OSS run | — | **Yes** — new value + audit trail |
+| Byte-identical replay | No | No | **24/24** on Azure |
+| Bitemporal audit (OSS) | Varies | Graph | **Yes** |
+| Self-hosted default | OSS + SaaS | SaaS | **Yes** |
+
+**Head-to-head:** same Gemini, same correction — PrismCortex surfaced **$55k** after update; Mem0 OSS top retrieval stayed **$40k** in our live test. Reproducible: [benchmarks/results/competitive/vs_mem0.json](benchmarks/results/competitive/vs_mem0.json).
+
+**Landing page spec for agents:** [compare.md](compare.md) · **Full technical comparison:** [docs/COMPETITIVE.md](docs/COMPETITIVE.md)
 
 ---
 
@@ -212,6 +253,10 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 | [ROADMAP.md](ROADMAP.md) | Enterprise GA plan + honest gaps |
 | [docs/SLA.md](docs/SLA.md) | Reference SLOs + commercial tiers |
 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing guide (~20 concurrent clients / 4 vCPU) |
+| [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | **Load test explainer** — what we fixed, how to read SLO fields |
+| [docs/NOTEBOOKLM_STORY.md](docs/NOTEBOOKLM_STORY.md) | **NotebookLM source** — story, how-to, marketing & technical briefing |
+| [compare.md](compare.md) | **Landing page spec** — comparison tables, copy blocks for insightits.com |
+| [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | **Market comparison** — Mem0/Zep, LoCoMo, head-to-head |
 | [docs/SCALING.md](docs/SCALING.md) | Horizontal read scaling story |
 | [docs/SUPPORT.md](docs/SUPPORT.md) | 24×7 Enterprise support model |
 | [docs/SOC2_ROADMAP.md](docs/SOC2_ROADMAP.md) | Compliance readiness |

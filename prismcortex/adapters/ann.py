@@ -15,7 +15,10 @@ class AnnGraphStore(InMemoryGraphStore):
     def __init__(self, *, tenant_id: str = "default", ivf_threshold: Optional[int] = None, nlist: int = 256, nprobe: int = 16) -> None:
         super().__init__()
         self.tenant_id = tenant_id
-        self._ivf_threshold = ivf_threshold or int(os.environ.get("PRISMCORTEX_ANN_THRESHOLD", "5000"))
+        # Below this node count the linear scan is BOTH more accurate and fast enough
+        # (recall ~0.97 vs ANN ~0.85 at 50k facts; linear p95 stays low to ~50k nodes).
+        # ANN only earns its keep at true scale — default high, let ops tune down.
+        self._ivf_threshold = ivf_threshold or int(os.environ.get("PRISMCORTEX_ANN_THRESHOLD", "50000"))
         self._nlist = nlist
         self._nprobe = nprobe
         self._centroids: Optional[np.ndarray] = None

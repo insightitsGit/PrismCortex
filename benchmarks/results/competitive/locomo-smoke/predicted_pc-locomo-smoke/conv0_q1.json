@@ -1,0 +1,385 @@
+{
+  "question_id": "conv0_q1",
+  "conversation_idx": 0,
+  "category": 2,
+  "category_name": "temporal",
+  "question": "When did Melanie paint a sunrise?",
+  "ground_truth_answer": "2022",
+  "evidence": [
+    "D1:12"
+  ],
+  "user_id": "locomo_0_d0441b38",
+  "reference_date": "9:55 am on 22 October, 2023",
+  "retrieval": {
+    "search_query": "When did Melanie paint a sunrise?",
+    "search_results": [
+      {
+        "memory": "Caroline is participant in LGBTQ support group",
+        "score": 0.85,
+        "id": "e_a3aab0548098feb8"
+      },
+      {
+        "memory": "Caroline finds inspiring transgender stories",
+        "score": 0.8373,
+        "id": "e_dba5aeb9e41c09ac"
+      },
+      {
+        "memory": "Caroline is happy for support",
+        "score": 0.833,
+        "id": "e_1657fd018cd88ca5"
+      },
+      {
+        "memory": "Caroline is thankful for support",
+        "score": 0.8288,
+        "id": "e_642e7ddf2429f832"
+      },
+      {
+        "memory": "Caroline shares image",
+        "score": 0.8245,
+        "id": "e_79a5bd2739e98849"
+      },
+      {
+        "memory": "Caroline has acceptance",
+        "score": 0.7905,
+        "id": "e_3d8510f49721fec9"
+      },
+      {
+        "memory": "Caroline has courage",
+        "score": 0.7863,
+        "id": "e_bf7a1e0b46dae5bf"
+      },
+      {
+        "memory": "Caroline achieves self-embrace",
+        "score": 0.782,
+        "id": "e_53821b9b5ad8622e"
+      },
+      {
+        "memory": "Caroline continues education",
+        "score": 0.7693,
+        "id": "e_9fa5455e1259655b"
+      },
+      {
+        "memory": "Caroline explores career options",
+        "score": 0.765,
+        "id": "e_c0ef52deb4544225"
+      },
+      {
+        "memory": "Caroline has preference counseling",
+        "score": 0.7608,
+        "id": "e_40ac8a72dc77bb8e"
+      },
+      {
+        "memory": "Caroline has preference mental health",
+        "score": 0.7565,
+        "id": "e_8a8a2ec93b7563db"
+      },
+      {
+        "memory": "Caroline has goal support",
+        "score": 0.7523,
+        "id": "e_1d7026c32df16dcc"
+      },
+      {
+        "memory": "Caroline likes charity race",
+        "score": 0.6843,
+        "id": "e_e761548bb9e9e087"
+      },
+      {
+        "memory": "Melanie loves painting",
+        "score": 0.6779,
+        "id": "e_b77c159114060aae"
+      },
+      {
+        "memory": "Caroline is proud of Mel",
+        "score": 0.663,
+        "id": "e_90a544daff0666a6"
+      },
+      {
+        "memory": "Caroline is researching adoption agencies",
+        "score": 0.646,
+        "id": "e_db81bde99cc2c832"
+      },
+      {
+        "memory": "Caroline desires family",
+        "score": 0.6418,
+        "id": "e_fcc7f121ab49c723"
+      },
+      {
+        "memory": "Caroline desires loving home",
+        "score": 0.6375,
+        "id": "e_136e25ef3e43076c"
+      },
+      {
+        "memory": "Melanie painted lake sunrise",
+        "score": 0.6344,
+        "id": "e_3e525ec004fd41c6"
+      },
+      {
+        "memory": "Caroline cares for kids in need",
+        "score": 0.629,
+        "id": "e_829e8454ae5183cb"
+      },
+      {
+        "memory": "Caroline is kind",
+        "score": 0.6248,
+        "id": "e_d61771f0b3280410"
+      },
+      {
+        "memory": "Caroline wants to provide loving home",
+        "score": 0.6205,
+        "id": "e_db5714042b46f084"
+      },
+      {
+        "memory": "Caroline is considering adoption agency",
+        "score": 0.612,
+        "id": "e_bcd00f7c5532dffb"
+      },
+      {
+        "memory": "Melanie considers fun painting",
+        "score": 0.609,
+        "id": "e_c46594f20b33f637"
+      },
+      {
+        "memory": "Caroline ensures safe and loving home",
+        "score": 0.595,
+        "id": "e_eb1fcbabfe65dd63"
+      },
+      {
+        "memory": "Melanie ran charity race",
+        "score": 0.5945,
+        "id": "e_0ab8382e73ef257a"
+      },
+      {
+        "memory": "Caroline participated in school event",
+        "score": 0.5908,
+        "id": "e_5a37cb6aa5de45eb"
+      },
+      {
+        "memory": "Caroline talked about transgender journey",
+        "score": 0.5865,
+        "id": "e_c96d8f7919932a31"
+      },
+      {
+        "memory": "Caroline encouraged students",
+        "score": 0.5823,
+        "id": "e_865cc9c57b15e4d9"
+      },
+      {
+        "memory": "Caroline started transitioning",
+        "score": 0.5738,
+        "id": "e_117efd1c12c5aaf8"
+      },
+      {
+        "memory": "LGBTQ support group is held on yesterday",
+        "score": 0.5721,
+        "id": "e_52ed264da01de08c"
+      },
+      {
+        "memory": "LGBTQ support group is powerful",
+        "score": 0.5692,
+        "id": "e_082d920d992d64a3"
+      },
+      {
+        "memory": "Melanie values self-care",
+        "score": 0.5619,
+        "id": "e_9ec082191c40e8a9"
+      },
+      {
+        "memory": "Melanie cares for family",
+        "score": 0.5583,
+        "id": "e_a151390ea1f562e6"
+      },
+      {
+        "memory": "Melanie has Melanie's kids",
+        "score": 0.5546,
+        "id": "e_498c4e98f2b5070e"
+      },
+      {
+        "memory": "image shows dog",
+        "score": 0.5308,
+        "id": "e_7037b8813a2a48bb"
+      },
+      {
+        "memory": "image shows wall",
+        "score": 0.528,
+        "id": "e_5a76eba383c4ba82"
+      },
+      {
+        "memory": "LGBTQ support group is source of acceptance",
+        "score": 0.5261,
+        "id": "e_4186265cf83b9dbb"
+      },
+      {
+        "memory": "image shows painting of woman",
+        "score": 0.5252,
+        "id": "e_014101ab688c3095"
+      },
+      {
+        "memory": "LGBTQ support group is source of courage",
+        "score": 0.5232,
+        "id": "e_3e7b565482f0025b"
+      },
+      {
+        "memory": "dog walks past wall",
+        "score": 0.5225,
+        "id": "e_39abfeee88067f77"
+      },
+      {
+        "memory": "wall has painting of woman",
+        "score": 0.5198,
+        "id": "e_9c8847165442bc29"
+      },
+      {
+        "memory": "image queried as transgender pride flag mural",
+        "score": 0.517,
+        "id": "e_e69cab25e73255cc"
+      },
+      {
+        "memory": "painting is outlet for expressing self",
+        "score": 0.507,
+        "id": "e_6989d8e7434c7bc9"
+      },
+      {
+        "memory": "support is for people with similar issues",
+        "score": 0.506,
+        "id": "e_aaf5c89548eba7fc"
+      },
+      {
+        "memory": "painting enables expression of feelings",
+        "score": 0.501,
+        "id": "e_713b4c38b6508ddf"
+      },
+      {
+        "memory": "painting enables creativity",
+        "score": 0.498,
+        "id": "e_b2b1f382973ec904"
+      },
+      {
+        "memory": "painting enables relaxation",
+        "score": 0.495,
+        "id": "e_b0dcfcd90a3d18d0"
+      },
+      {
+        "memory": "lake sunrise has painting date",
+        "score": 0.4785,
+        "id": "e_f567dc128ecf7dcf"
+      },
+      {
+        "memory": "painting date is last year",
+        "score": 0.4758,
+        "id": "e_cfbc5470828e32ca"
+      },
+      {
+        "memory": "lake sunrise is special",
+        "score": 0.473,
+        "id": "e_3b7c00c89974ae90"
+      },
+      {
+        "memory": "special is for Melanie",
+        "score": 0.4703,
+        "id": "e_07083bf92f7b9d77"
+      },
+      {
+        "memory": "charity race is for mental health",
+        "score": 0.4686,
+        "id": "e_4011207483009dc0"
+      },
+      {
+        "memory": "colors are blended nicely",
+        "score": 0.4675,
+        "id": "e_3d474d9c8ebbc58d"
+      },
+      {
+        "memory": "charity race happened on last Saturday",
+        "score": 0.4657,
+        "id": "e_e2bd949c691391a2"
+      },
+      {
+        "memory": "Mel participates in charity race",
+        "score": 0.46,
+        "id": "e_32b5860cec32742d"
+      },
+      {
+        "memory": "charity race promotes awareness",
+        "score": 0.4571,
+        "id": "e_bfddd364a22addd5"
+      },
+      {
+        "memory": "charity race achieves making a difference",
+        "score": 0.4514,
+        "id": "e_57f201436f5312a6"
+      },
+      {
+        "memory": "awareness is for mental health",
+        "score": 0.4345,
+        "id": "e_849625979752fdc1"
+      },
+      {
+        "memory": "loving home is for kids",
+        "score": 0.4284,
+        "id": "e_2f5c5b0fcf8caf49"
+      },
+      {
+        "memory": "loving home for kids",
+        "score": 0.4169,
+        "id": "e_87b7cae8c31f3edb"
+      },
+      {
+        "memory": "adoption agency has adoption agency brochure",
+        "score": 0.3932,
+        "id": "e_19da1a342c5a5079"
+      },
+      {
+        "memory": "adoption agency brochure depicts sign for new arrival",
+        "score": 0.3905,
+        "id": "e_b15f36041a3ac293"
+      },
+      {
+        "memory": "adoption agency brochure depicts information and domestic building",
+        "score": 0.3878,
+        "id": "e_504c9e07c9792868"
+      },
+      {
+        "memory": "students get involved in LGBTQ community",
+        "score": 0.374,
+        "id": "e_3c8c524fd2a20b47"
+      },
+      {
+        "memory": "transitioning started three years ago",
+        "score": 0.3685,
+        "id": "e_a255b85b13a064cb"
+      }
+    ],
+    "search_latency_ms": 0.0,
+    "total_results": 67
+  },
+  "cutoff_results": {
+    "top_10": {
+      "judgment": "WRONG",
+      "score": 0.0,
+      "generated_answer": "The memories do not contain any information about Melanie painting a sunrise.",
+      "memories_evaluated": 10,
+      "reason": "The gold answer provides a specific date (2022) for when Melanie painted a sunrise, but the generated answer states that this information is not available in the memories, indicating a failure to recall the correct fact."
+    },
+    "top_20": {
+      "judgment": "WRONG",
+      "score": 0.0,
+      "generated_answer": "Melanie painted a lake sunrise on an unknown date.",
+      "memories_evaluated": 20,
+      "reason": "The gold answer provides a specific year (2022), but the generated answer states the date is 'unknown', indicating a failure to recall the correct information."
+    },
+    "top_50": {
+      "judgment": "WRONG",
+      "score": 0.0,
+      "generated_answer": "The memories state that Melanie painted a lake sunrise and that this painting has a date, but the specific date is not mentioned.",
+      "memories_evaluated": 50,
+      "reason": "The gold answer provides the specific year '2022', but the generated answer explicitly states that the specific date is not mentioned, indicating a failure to recall the correct information."
+    },
+    "top_200": {
+      "judgment": "CORRECT",
+      "score": 1.0,
+      "generated_answer": "Melanie painted a sunrise in 2022.",
+      "memories_evaluated": 67,
+      "reason": "The generated answer directly states the correct year '2022', which exactly matches the gold answer."
+    }
+  }
+}
