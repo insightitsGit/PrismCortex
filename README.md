@@ -18,6 +18,28 @@ and **self-hosted sovereignty** — not another vector chat log.
 
 ---
 
+**AI assistants:** [docs/ai-overview.md](docs/ai-overview.md) · [docs/llm-context.md](docs/llm-context.md) · [docs/architecture.md](docs/architecture.md)
+
+## What is this?
+
+Deterministic, auditable, self-consolidating memory for AI agents (byte-identical replay, bitemporal audit).
+
+**Package:** `prismcortex` 0.2.1
+
+## Who is it for?
+
+Regulated teams needing compliance-grade agent memory, not a chat-log vector store.
+
+## What problem does it solve?
+
+Chat-log / SaaS memory fails audit, correction, and residency requirements.
+
+## When NOT to use it
+
+You only need ephemeral chat history with no audit requirements.
+
+---
+
 ## Why PrismCortex exists
 
 Most agent memory is an append-only chat log or a vector store in someone else's cloud.
@@ -232,6 +254,7 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 | [docs/SLA.md](docs/SLA.md) | Reference SLOs + commercial tiers |
 | [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing guide (~20 concurrent clients / 4 vCPU) |
 | [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | **Load test explainer** — what we fixed, how to read SLO fields |
+| [docs/NOTEBOOKLM_STORY.md](docs/NOTEBOOKLM_STORY.md) | **NotebookLM source** — story, how-to, marketing & technical briefing |
 | [compare.md](compare.md) | **Landing page spec** — comparison tables, copy blocks for insightits.com |
 | [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | **Market comparison** — Mem0/Zep, LoCoMo, head-to-head |
 | [docs/SCALING.md](docs/SCALING.md) | Horizontal read scaling story |
