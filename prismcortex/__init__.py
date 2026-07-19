@@ -16,13 +16,15 @@ from .models import (
     DigestResult,
     Edge,
     GraphVersion,
+    MemoryEvent,
+    MemoryEventKind,
     Node,
     RecallResult,
     StateDelta,
     Subgraph,
 )
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 __all__ = [
     "Memory",
@@ -31,6 +33,8 @@ __all__ = [
     "DigestOutcome",
     "DigestResult",
     "RecallResult",
+    "MemoryEvent",
+    "MemoryEventKind",
     "Node",
     "Edge",
     "Subgraph",

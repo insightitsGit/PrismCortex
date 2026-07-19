@@ -337,9 +337,16 @@ class DurableCache:
 class InProcessMesh:
     def __init__(self) -> None:
         self.events: list[tuple[int, list[str]]] = []
+        # Optional MemoryEvent fan-out (duck-typed; see Memory._emit). Not part of
+        # the MeshBroadcast Protocol so custom meshes stay compatible.
+        self.memory_events: list = []
 
     def broadcast_version(self, version: GraphVersion, invalidated: list[str]) -> None:
         self.events.append((version.version, invalidated))
+
+    def broadcast_event(self, event) -> None:
+        """Optional observability fan-out for MemoryEvent (PrismShine / cache eviction)."""
+        self.memory_events.append(event)
 
 
 # --------------------------------------------------------------------------- #

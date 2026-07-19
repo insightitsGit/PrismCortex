@@ -403,3 +403,164 @@ def test_crowded_graph_recall_includes_label_overlap():
                  resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
     ans = mem.recall("When is the product launch?").answer.lower()
     assert "june" in ans
+
+
+# --- MemoryEvent hooks (PrismShine / cache invalidation) -------------------------
+
+def test_accommodate_emits_event_with_old_and_new_values():
+    from prismcortex.models import MemoryEventKind
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_p", label="Person A", embedding=proj.embed("Person A"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_bro", label="brother", embedding=proj.embed("brother"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(
+            id="e_old", src="n_p", dst="n_bro", relation="is",
+            provenance=Provenance(source_id="src-1"),
+        )),
+    ]))
+    mesh = InProcessMesh()
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=mesh, staging=ListStaging())
+    seen = []
+    mem.on_event(seen.append)
+
+    mem._commit(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_sis", label="sister", embedding=proj.embed("sister"))),
+        DeltaOp(
+            operation=Operation.ACCOMMODATE,
+            edge=Edge(id="e_new", src="n_p", dst="n_sis", relation="is", provenance=Provenance(source_id="src-2")),
+            target_id="e_old",
+            reason="correction",
+        ),
+    ]))
+
+    acc = [e for e in seen if e.kind is MemoryEventKind.ACCOMMODATE]
+    assert len(acc) == 1
+    assert acc[0].subject == "Person A"
+    assert acc[0].old_value == "brother"
+    assert acc[0].new_value == "sister"
+    assert acc[0].source_event_id == "src-2"
+    assert mesh.memory_events and mesh.memory_events[0].kind is MemoryEventKind.ACCOMMODATE
+
+
+def test_conflict_opened_and_resolved_emit_events():
+    from prismcortex.models import (
+        ExtractedEntity, ExtractedGist, ExtractedRelation, MemoryEventKind, Subgraph,
+    )
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_ttl", label="ttl", embedding=proj.embed("ttl"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_60", label="60", embedding=proj.embed("60"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e60", src="n_ttl", dst="n_60", relation="is")),
+    ]))
+    staging = ListStaging()
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=staging)
+    seen = []
+    mem.on_event(seen.append)
+
+    gist = ExtractedGist(
+        entities=[ExtractedEntity(label="ttl"), ExtractedEntity(label="300")],
+        relations=[ExtractedRelation(src="ttl", dst="300", relation="is")],
+    )
+    delta, uncertain = mem._calculate_delta(gist, Subgraph(), Band.NORMAL, Provenance(source_id="c1"))
+    assert uncertain
+    mem.staging.stage(delta, "uncertain: conflict")
+    mem._emit_conflict_opened(delta, source_id="c1")
+    assert any(e.kind is MemoryEventKind.CONFLICT_OPENED for e in seen)
+    opened = next(e for e in seen if e.kind is MemoryEventKind.CONFLICT_OPENED)
+    assert opened.old_value == "60" and opened.new_value == "300"
+
+    mem.sleep()
+    kinds = [e.kind for e in seen]
+    assert MemoryEventKind.ACCOMMODATE in kinds
+    assert MemoryEventKind.CONFLICT_RESOLVED in kinds
+
+
+def test_on_event_unsubscribe_and_throwing_callback_does_not_break_digest():
+    from prismcortex.models import MemoryEventKind
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_a", label="amin", embedding=proj.embed("amin"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_40", label="40k", embedding=proj.embed("40k"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(
+            id="e1", src="n_a", dst="n_40", relation="budget_is", provenance=Provenance(source_id="m1"),
+        )),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+
+    def boom(_ev):
+        raise RuntimeError("subscriber boom")
+
+    good = []
+    unsub_boom = mem.on_event(boom)
+    unsub_good = mem.on_event(good.append)
+
+    # Throwing subscriber must not prevent commit or other subscribers.
+    mem._commit(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_55", label="55k", embedding=proj.embed("55k"))),
+        DeltaOp(
+            operation=Operation.ACCOMMODATE,
+            edge=Edge(id="e2", src="n_a", dst="n_55", relation="budget_is"),
+            target_id="e1",
+            reason="correction",
+        ),
+    ]))
+    assert store.current_edge("n_a", "budget_is").dst == "n_55"
+    assert any(e.kind is MemoryEventKind.ACCOMMODATE for e in good)
+
+    unsub_boom()
+    unsub_good()
+    good.clear()
+    # After unsubscribe, no further events for this callback.
+    mem.forget("m1")  # may no-op edges already replaced; still emits FORGET
+    assert good == []
+
+
+def test_forget_emits_event():
+    from prismcortex.models import MemoryEventKind
+
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    src = Provenance(source_id="erase-me")
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_a", label="amin", embedding=proj.embed("amin"), provenance=src)),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_v", label="x", embedding=proj.embed("x"), provenance=src)),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e1", src="n_a", dst="n_v", relation="is", provenance=src)),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    seen = []
+    mem.on_event(seen.append)
+    mem.forget("erase-me")
+    forgets = [e for e in seen if e.kind is MemoryEventKind.FORGET]
+    assert len(forgets) == 1 and forgets[0].source_event_id == "erase-me"
+
+
+def test_evidence_exposes_correction_metadata():
+    store = InMemoryGraphStore()
+    proj = HashingProjector()
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_b", label="budget", embedding=proj.embed("budget"))),
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_40", label="40k", embedding=proj.embed("40k"))),
+        DeltaOp(operation=Operation.ASSIMILATE, edge=Edge(id="e_old", src="n_b", dst="n_40", relation="is")),
+    ]))
+    store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(id="n_55", label="55k", embedding=proj.embed("55k"))),
+        DeltaOp(operation=Operation.ACCOMMODATE, edge=Edge(id="e_new", src="n_b", dst="n_55", relation="is"), target_id="e_old"),
+    ]))
+    mem = Memory(projector=proj, extractor=None, renderer=_R(), store=store,
+                 resonance=InProcessResonance(), cache=DurableCache(), mesh=InProcessMesh(), staging=ListStaging())
+    ex = mem.explain("what is the budget")
+    assert ex.evidence
+    ev = next(e for e in ex.evidence if "55k" in e.fact)
+    assert ev.supersedes_prior is True
+    assert ev.prior_value == "40k"
+    assert ev.valid_from is not None

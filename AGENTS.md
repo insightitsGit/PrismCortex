@@ -11,7 +11,7 @@
 | Field | Value |
 |-------|-------|
 | **Product** | PrismCortex — compliance-grade agent memory |
-| **Version** | v0.2.1 (PyPI + Azure benchmarks) |
+| **Version** | v0.3.0 (PyPI + Azure benchmarks on 0.2.1 scorecard) |
 | **Owner** | Insight IT Solutions LLC |
 | **Email** | info@insightits.com |
 | **Phone** | +1 (973) 692-6919 |
@@ -28,7 +28,7 @@
 |----------|-----|-------|
 | **GitHub repository** | https://github.com/insightitsGit/PrismCortex | **PUBLIC** since 2026-06-29 |
 | **Default branch** | `master` | |
-| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.2.1` |
+| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.3.0` |
 | **Whitepaper (repo)** | https://github.com/insightitsGit/PrismCortex/blob/master/docs/WHITEPAPER.md | |
 | **Benchmark scorecard** | https://github.com/insightitsGit/PrismCortex/blob/master/benchmarks/RESULTS.md | |
 | **OpenAPI (when server running)** | `http://<host>:8080/docs` | FastAPI auto-docs |
@@ -78,12 +78,16 @@ mem.recall("What's my deploy budget?").answer
 
 ```bash
 pip install "prismcortex[gemini,server]"
+# Optional Prism stack (pick one):
+#   pip install "prismcortex[prism]"       # prismlib
+#   pip install "prismcortex[prism-plus]"  # prismlib-plus — mutually exclusive with [prism]
 export GEMINI_API_KEY=...
 export PRISMCORTEX_API_KEY=your-secret
 uvicorn prismcortex.server:app --host 0.0.0.0 --port 8080
 ```
 
 Key endpoints: `POST /digest`, `POST /recall`, `POST /explain`, `GET /replay_certificate`, `GET /console`.
+Library events: `mem.on_event(callback)` → `MemoryEvent` (see [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md)).
 Auth: header `X-API-Key: <key>`.
 
 ---

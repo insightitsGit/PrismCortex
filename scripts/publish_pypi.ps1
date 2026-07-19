@@ -55,5 +55,5 @@ python -m twine upload dist/*
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""
-Write-Host "Published. Verify: pip install prismcortex==0.2.1"
+Write-Host "Published. Verify: pip install prismcortex==0.3.0"
 Write-Host "PyPI: https://pypi.org/project/prismcortex/"
