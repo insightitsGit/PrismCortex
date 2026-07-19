@@ -24,7 +24,7 @@ and **self-hosted sovereignty** — not another vector chat log.
 
 Deterministic, auditable, self-consolidating memory for AI agents (byte-identical replay, bitemporal audit).
 
-**Package:** `prismcortex` 0.2.1
+**Package:** `prismcortex` **0.3.0** · Azure E2E scorecard still cites the v0.2.1 run
 
 ## Who is it for?
 
@@ -37,6 +37,13 @@ Chat-log / SaaS memory fails audit, correction, and residency requirements.
 ## When NOT to use it
 
 You only need ephemeral chat history with no audit requirements.
+
+### What's new in 0.3.0
+
+- **`mem.on_event(callback)`** — correction / conflict / forget notifications for PrismShine and cache invalidation (`MemoryEvent`)
+- **Evidence correction metadata** — `valid_from`, `supersedes_prior`, `prior_value` on `/explain`
+- **`[prism-plus]` extra** — use `prismlib-plus` instead of `prismlib` (mutually exclusive with `[prism]`)
+- Release notes: [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md)
 
 ---
 
@@ -108,12 +115,17 @@ Mem0 and Zep lead **published accuracy benchmarks** (LoCoMo, LongMemEval, DMR). 
 ```bash
 pip install prismcortex                  # core (MIT)
 pip install "prismcortex[gemini]"        # + real Gemini extraction/rendering
-pip install "prismcortex[prism]"         # + full Insight ITS stack (PrismLang, etc.)
+pip install "prismcortex[prism]"         # + Insight ITS stack with prismlib
+pip install "prismcortex[prism-plus]"    # + same stack with prismlib-plus (ChorusGraph)
 pip install "prismcortex[server]"        # + FastAPI HTTP service
 pip install "prismcortex[gemini,server,prism]"   # production stack
 ```
 
 Requires **Python 3.10+**.
+
+**`[prism]` and `[prism-plus]` are mutually exclusive** — both install the `prism` import
+namespace. Use `[prism]` for standalone PrismCortex; use `[prism-plus]` when the host
+already depends on `prismlib-plus` (e.g. ChorusGraph). Do not install both extras.
 
 ---
 
@@ -130,6 +142,10 @@ mem = reference_memory()   # needs GEMINI_API_KEY for real extraction
 mem.digest("We use Postgres 16 in us-east-1.")
 result = mem.recall("Where is our database hosted?")
 print(result.answer, result.cache_hit, result.confidence)
+
+# Optional: subscribe to corrections (PrismShine / semantic-cache eviction)
+unsub = mem.on_event(lambda ev: print(ev.kind, ev.old_value, "→", ev.new_value))
+# unsub() when done
 ```
 
 ### 2. HTTP service (multi-agent, Docker, Azure)
@@ -171,7 +187,7 @@ Docker + Azure deploy: see [deploy/run_only.sh](deploy/run_only.sh).
 
 ---
 
-## Enterprise features (v0.2)
+## Enterprise features (v0.3)
 
 | Feature | Endpoint / module |
 |---------|-------------------|
@@ -185,6 +201,7 @@ Docker + Azure deploy: see [deploy/run_only.sh](deploy/run_only.sh).
 | Audit console | `GET /console` |
 | Metrics / ops | `GET /metrics`, `GET /dashboard` |
 | 50k+ facts (ANN) | `PRISMCORTEX_USE_ANN=1` |
+| Correction events | `Memory.on_event` → `MemoryEvent` (library) |
 
 Docs: [docs/SLA.md](docs/SLA.md) · [docs/CAPACITY.md](docs/CAPACITY.md) · [docs/SOC2_ROADMAP.md](docs/SOC2_ROADMAP.md) · [SECURITY.md](SECURITY.md)
 
@@ -201,15 +218,18 @@ recall(query) ─▶ retrieve subgraph ─▶ cache hit? replay (byte-identical)
                                     └─ miss? render once → freeze
 ```
 
-| Port | Reference | Production (`[prism]`) |
-|------|-----------|----------------------|
-| Gist projection | hashing embeddings | `prismlang` |
-| Graph store | in-memory bitemporal | `prismrag-patch` |
+| Port | Reference (core, no Prism deps) | Production extras |
+|------|--------------------------------|-------------------|
+| Gist projection | hashing embeddings | `prismlang` (`[prism]` / `[prism-plus]`) |
+| Graph store | in-memory bitemporal | Cortex-owned store (+ `prismrag-patch` governor) |
 | Consolidation | in-process | `prismresonance` |
-| Render cache | JSON file | `prismlib` |
+| Render cache | JSON file | `prismlib` **or** `prismlib-plus` |
 | Extraction | — | Gemini (`[gemini]`) |
 
-Full design: [DESIGN.md](DESIGN.md) · Whitepaper: [docs/WHITEPAPER.md](docs/WHITEPAPER.md)
+**Dependency note:** `pip install prismcortex` needs only `pydantic`, `numpy`, and `cryptography`.
+Prism-family packages are **optional** via `[prism]` or `[prism-plus]`.
+
+Full design: [DESIGN.md](DESIGN.md) · Whitepaper: [docs/WHITEPAPER.md](docs/WHITEPAPER.md) · Changelog: [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md)
 
 ---
 
@@ -237,7 +257,15 @@ python benchmarks/scale_bench.py --ann     # 50k ANN scale test
 BACKEND=prism bash deploy/run_only.sh      # Azure E2E (needs .env)
 ```
 
-Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
+### Publish 0.3.0 to PyPI
+
+```powershell
+# Requires PYPI_API_TOKEN in .env (never commit)
+.\scripts\publish_pypi.ps1
+# Or: create a GitHub Release → .github/workflows/publish.yml (trusted publishing)
+```
+
+Verify: `pip install prismcortex==0.3.0` · https://pypi.org/project/prismcortex/
 
 ---
 
@@ -246,6 +274,7 @@ Publish to PyPI: `scripts/publish_pypi.ps1` (requires `PYPI_API_TOKEN`).
 | Doc | Contents |
 |-----|----------|
 | [AGENTS.md](AGENTS.md) | **AI agent handoff** — canonical URLs, contacts, processes |
+| [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md) | **0.3.0 release notes** — MemoryEvent, packaging |
 | [ai-info.txt](ai-info.txt) | Machine-readable product summary for LLM crawlers |
 | [docs/WHITEPAPER.md](docs/WHITEPAPER.md) | **Product whitepaper** — problem, architecture, validation |
 | [DESIGN.md](DESIGN.md) | Engineering design spec |

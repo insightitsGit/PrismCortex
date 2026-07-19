@@ -5,7 +5,12 @@ prismcortex[prism]`). Each class wraps exactly one package:
 
   - PrismLangProjector  → prismlang.PrismProjector   (deterministic, CPU-stable vectors)
   - PrismResonanceAdapter → prismresonance.PrismResonance (wavepacket weight + sleep)
-  - PrismLibCache       → prismlib SQLiteStore        (durable cache-as-failover)
+  - PrismLibCache       → prismlib / prismlib-plus SQLiteStore (durable cache-as-failover)
+
+Install extras (mutually exclusive — both ship the ``prism`` import namespace):
+
+  - ``prismcortex[prism]``      → prismlib
+  - ``prismcortex[prism-plus]`` → prismlib-plus (ChorusGraph hosts)
 
 The bitemporal GraphStore stays PrismCortex-owned (the reference store *is* the design
 — prismrag-patch is a retrieval governor, not a bitemporal database, so it slots in as
@@ -16,9 +21,26 @@ from __future__ import annotations
 
 import os
 import time
+import warnings
 from typing import Optional
 
 import numpy as np
+
+
+def _warn_if_dual_prism_cache() -> None:
+    """Best-effort notice when both prismlib and prismlib-plus may be present."""
+    try:
+        import importlib.metadata as md
+    except ImportError:  # pragma: no cover
+        return
+    names = {d.metadata["Name"].lower() for d in md.distributions() if d.metadata.get("Name")}
+    if "prismlib" in names and "prismlib-plus" in names:
+        warnings.warn(
+            "Both prismlib and prismlib-plus are installed; they share the `prism` import. "
+            "Use exactly one of prismcortex[prism] or prismcortex[prism-plus].",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
 
 class PrismLangProjector:
@@ -105,6 +127,7 @@ class PrismLibCache:
     _TEN_YEARS = 10 * 365 * 24 * 3600
 
     def __init__(self, db_path: str = ".prismcortex_cache/prismlib.db") -> None:
+        _warn_if_dual_prism_cache()
         from prism.cache import CacheEntry, SQLiteStore
 
         os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)

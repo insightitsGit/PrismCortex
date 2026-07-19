@@ -196,6 +196,11 @@ class Evidence(BaseModel):
     recorded_at: Optional[datetime] = None
     confirmations: float = 1.0   # edge weight (how many times reinforced)
     confidence: float = 1.0      # 0..1
+    # Correction metadata (additive) — lets cache layers compare entry.created_at vs fact time
+    # without a separate bitemporal query. Defaults keep existing JSON clients compatible.
+    valid_from: Optional[datetime] = None
+    supersedes_prior: bool = False
+    prior_value: Optional[str] = None
 
 
 class Explanation(BaseModel):
@@ -205,3 +210,28 @@ class Explanation(BaseModel):
     confidence: float = 1.0
     freshness: Optional[datetime] = None
     evidence: list[Evidence] = Field(default_factory=list)
+
+
+# --- observability (PrismShine / cache invalidation; never mutates memory state) ---
+
+class MemoryEventKind(str, enum.Enum):
+    ACCOMMODATE = "accommodate"
+    CONFLICT_OPENED = "conflict_opened"
+    CONFLICT_RESOLVED = "conflict_resolved"
+    FORGET = "forget"
+
+
+class MemoryEvent(BaseModel):
+    """Side-channel notification for corrections, conflicts, and erasure.
+
+    Synchronous, best-effort: subscribers must not affect digest/recall determinism.
+    """
+
+    kind: MemoryEventKind
+    subject: Optional[str] = None
+    relation: Optional[str] = None
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    valid_from: datetime = Field(default_factory=utcnow)
+    source_event_id: Optional[str] = None
+    tenant_id: Optional[str] = None

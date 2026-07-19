@@ -176,7 +176,7 @@ def _deny(msg: str, code: int = 403) -> JSONResponse:
     return JSONResponse({"detail": msg}, status_code=code)
 
 
-app = FastAPI(title="PrismCortex", version="0.2.1")
+app = FastAPI(title="PrismCortex", version="0.3.0")
 _static = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static):
     app.mount("/console", StaticFiles(directory=_static, html=True), name="console")
@@ -242,7 +242,7 @@ def health():
         alerts.append({"level": "warn", "msg": f"errors={metrics.counts['errors']}"})
     return {
         "ok": True,
-        "version": "0.2.1",
+        "version": "0.3.0",
         "backend": _backend,
         "auth": auth_required(),
         "multi_tenant": True,

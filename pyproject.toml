@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "prismcortex"
-version = "0.2.1"
+version = "0.3.0"
 description = "Deterministic, auditable, self-consolidating memory for AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,9 +34,17 @@ dependencies = [
 
 [project.optional-dependencies]
 # Production engine: swap reference adapters for the real Insight ITS packages.
+# Mutually exclusive with `prism-plus` — both packages install the same `prism` import.
 prism = [
     "prismlang>=0.1.1",
-    "prismlib>=0.4.0",
+    "prismlib>=0.5.0",
+    "prismrag-patch>=0.2.1",
+    "prismresonance>=0.3.0",
+]
+# For hosts already on prismlib-plus (e.g. ChorusGraph). Do NOT install with `[prism]`.
+prism-plus = [
+    "prismlang>=0.1.1",
+    "prismlib-plus>=0.8.0",
     "prismrag-patch>=0.2.1",
     "prismresonance>=0.3.0",
 ]

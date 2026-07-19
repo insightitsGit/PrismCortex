@@ -5,7 +5,7 @@
 PRODUCT
 Name: PrismCortex
 Description: Deterministic, auditable, self-consolidating memory for AI agents. Compliance-grade agent memory with byte-identical replay, bitemporal audit, and self-hosted sovereignty.
-Version: 0.2.1
+Version: 0.3.0
 Owner: Insight IT Solutions LLC
 
 URLS
@@ -29,9 +29,11 @@ Website: https://www.insightits.com
 INSTALL
 pip install prismcortex
 pip install "prismcortex[gemini,server,prism]"
+pip install "prismcortex[prism-plus]"   # mutually exclusive with [prism]; for ChorusGraph hosts
 
 INTEGRATION
 Library: from prismcortex import reference_memory
+Events: mem.on_event(callback) -> MemoryEvent (accommodate, conflict_*, forget)
 HTTP: FastAPI on port 8080 — POST /digest, POST /recall, POST /explain, GET /console
 Auth: X-API-Key header
 

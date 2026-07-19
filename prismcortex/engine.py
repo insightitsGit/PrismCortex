@@ -8,7 +8,8 @@ deterministic render path.
 from __future__ import annotations
 
 import hashlib
-from typing import Optional
+import logging
+from typing import Callable, Optional
 
 from . import salience
 from .determinism import content_address, extraction_memo_key
@@ -24,13 +25,22 @@ from .models import (
     SKIP_BANDS,
     ExtractedGist,
     GraphVersion,
+    MemoryEvent,
+    MemoryEventKind,
     Node,
     Operation,
     Provenance,
     RecallResult,
     StateDelta,
     Subgraph,
+    utcnow,
 )
+
+_log = logging.getLogger("prismcortex.events")
+
+# Returned by ``Memory.on_event`` — call to remove the subscriber.
+Unsubscribe = Callable[[], None]
+MemoryEventCallback = Callable[[MemoryEvent], None]
 
 
 def _confidence(weight: float) -> float:
@@ -105,6 +115,72 @@ class Memory:
         self.resolve_threshold = resolve_threshold
         self.max_facts = max_facts
         self.tenant_id = tenant_id
+        self._event_subscribers: list[MemoryEventCallback] = []
+
+    def on_event(self, callback: MemoryEventCallback) -> Unsubscribe:
+        """Subscribe to correction / conflict / forget notifications.
+
+        Synchronous dispatch after the memory mutation. Exceptions in callbacks are
+        logged and swallowed so subscribers never break ``digest`` / ``sleep`` /
+        ``forget``. Optional fan-out: if ``mesh`` implements ``broadcast_event(event)``,
+        it is called after local subscribers (duck-typed; MeshBroadcast Protocol
+        unchanged). Returns an unsubscribe callable.
+        """
+        self._event_subscribers.append(callback)
+
+        def unsubscribe() -> None:
+            try:
+                self._event_subscribers.remove(callback)
+            except ValueError:
+                pass
+
+        return unsubscribe
+
+    def _emit(self, event: MemoryEvent) -> None:
+        """Best-effort local + optional mesh fan-out. Never raises to callers."""
+        for cb in list(self._event_subscribers):
+            try:
+                cb(event)
+            except Exception:  # noqa: BLE001 — observability must not break memory ops
+                _log.exception("memory event subscriber failed kind=%s", event.kind.value)
+        broadcast = getattr(self.mesh, "broadcast_event", None)
+        if callable(broadcast):
+            try:
+                broadcast(event)
+            except Exception:  # noqa: BLE001
+                _log.exception("mesh.broadcast_event failed kind=%s", event.kind.value)
+
+    def _label_of_edge_end(self, node_id: str, delta: Optional[StateDelta] = None) -> Optional[str]:
+        """Resolve a node label from the store, or from assimilate ops in the pending delta."""
+        if delta is not None:
+            for dop in delta.ops:
+                if dop.node is not None and dop.node.id == node_id:
+                    return dop.node.label
+        return self._label_for(node_id)
+
+    def _event_from_accommodate(
+        self, op: DeltaOp, *, kind: MemoryEventKind, delta: Optional[StateDelta] = None,
+    ) -> Optional[MemoryEvent]:
+        """Build an event for an ACCOMMODATE op; call *before* store.apply so old edge exists."""
+        if op.edge is None or not op.target_id:
+            return None
+        old = None
+        if hasattr(self.store, "all_edges"):
+            old = next((e for e in self.store.all_edges() if e.id == op.target_id), None)
+        subject = self._label_of_edge_end(op.edge.src, delta)
+        new_value = self._label_of_edge_end(op.edge.dst, delta)
+        old_value = self._label_of_edge_end(old.dst, delta) if old else None
+        prov = op.edge.provenance
+        return MemoryEvent(
+            kind=kind,
+            subject=subject,
+            relation=op.edge.relation,
+            old_value=old_value,
+            new_value=new_value,
+            valid_from=op.edge.valid_from if op.edge.valid_from else utcnow(),
+            source_event_id=prov.source_id if prov else None,
+            tenant_id=self.tenant_id,
+        )
 
     # ------------------------------------------------------------------ write
     def digest(self, text: str, *, source_id: Optional[str] = None, agent_id: Optional[str] = None) -> DigestResult:
@@ -133,12 +209,34 @@ class Memory:
         # Uncertain writes are deferred to sleep() — unless salience fast-tracks them.
         if uncertain and band not in FAST_TRACK_BANDS:
             self.staging.stage(delta, reason=f"uncertain: {gist.notes[:80]}")
+            self._emit_conflict_opened(delta, source_id=prov.source_id)
             return DigestResult(outcome=DigestOutcome.STAGED, band=band, delta=delta, version=self.store.version(), reason="parked for consolidation")
 
         version = self._commit(delta)
         only_reinforce = all(op.operation is Operation.REINFORCE for op in delta.ops)
         outcome = DigestOutcome.REINFORCED if only_reinforce else DigestOutcome.COMMITTED
         return DigestResult(outcome=outcome, band=band, delta=delta, version=version)
+
+    def _emit_conflict_opened(self, delta: StateDelta, *, source_id: Optional[str]) -> None:
+        for op in delta.ops:
+            if op.operation is not Operation.ASSIMILATE or op.edge is None:
+                continue
+            if op.reason != "conflicts with existing fact":
+                continue
+            prior = self._prior_conflicting_edge(
+                op.edge.src, op.edge.relation, op.edge.dst,
+                dst_label=self._label_of_edge_end(op.edge.dst, delta) or "",
+            )
+            self._emit(MemoryEvent(
+                kind=MemoryEventKind.CONFLICT_OPENED,
+                subject=self._label_of_edge_end(op.edge.src, delta),
+                relation=op.edge.relation,
+                old_value=self._label_of_edge_end(prior.dst, delta) if prior else None,
+                new_value=self._label_of_edge_end(op.edge.dst, delta),
+                valid_from=op.edge.valid_from if op.edge.valid_from else utcnow(),
+                source_event_id=source_id,
+                tenant_id=self.tenant_id,
+            ))
 
     def _label_for(self, node_id: str) -> Optional[str]:
         if hasattr(self.store, "node_label"):
@@ -269,6 +367,22 @@ class Memory:
         return StateDelta(ops=ops), uncertain
 
     def _commit(self, delta: StateDelta):
+        # Capture correction events before apply so old edges are still readable.
+        pending_events: list[MemoryEvent] = []
+        for op in delta.ops:
+            if op.operation is not Operation.ACCOMMODATE:
+                continue
+            ev = self._event_from_accommodate(op, kind=MemoryEventKind.ACCOMMODATE, delta=delta)
+            if ev is not None:
+                pending_events.append(ev)
+            # Sleep / human resolve also surface as conflict_resolved (same payload shape).
+            if op.reason in ("consolidated conflict", "human resolved"):
+                resolved = self._event_from_accommodate(
+                    op, kind=MemoryEventKind.CONFLICT_RESOLVED, delta=delta,
+                )
+                if resolved is not None:
+                    pending_events.append(resolved)
+
         version = self.store.apply(delta)
         invalidated: list[str] = []
         for op in delta.ops:
@@ -278,12 +392,35 @@ class Memory:
             elif op.operation is Operation.REINFORCE and op.target_id:
                 self.resonance.reinforce(op.target_id)
         self.mesh.broadcast_version(version, invalidated)
+        for ev in pending_events:
+            self._emit(ev)
         return version
 
     # ------------------------------------------------------------------- read
+    def _prior_superseded_value(self, edge: Edge, id2label: dict[str, str]) -> Optional[str]:
+        """If this current edge replaced an older value for the same slot, return that label."""
+        if not hasattr(self.store, "all_edges"):
+            return None
+        best = None
+        for e in self.store.all_edges():
+            if e.id == edge.id or e.src != edge.src or e.is_current:
+                continue
+            if not relations_compatible(e.relation, edge.relation):
+                continue
+            if e.valid_to is None:
+                continue
+            if best is None or (e.valid_to and best.valid_to and e.valid_to > best.valid_to):
+                best = e
+        if best is None:
+            return None
+        return id2label.get(best.dst) or self._label_of_edge_end(best.dst)
+
     def _evidence(self, subgraph: Subgraph) -> list[Evidence]:
         """The audit trail behind an answer: each current fact + its source + confidence."""
         id2label = {n.id: n.label for n in subgraph.nodes}
+        if hasattr(self.store, "all_nodes"):
+            for n in self.store.all_nodes():
+                id2label.setdefault(n.id, n.label)
         id2weight = {n.id: n.weight for n in subgraph.nodes}
         out: list[Evidence] = []
         for e in subgraph.edges:
@@ -291,12 +428,16 @@ class Memory:
                 continue
             w = id2weight.get(e.src, e.weight)
             prov = e.provenance
+            prior = self._prior_superseded_value(e, id2label)
             out.append(Evidence(
                 fact=f"{id2label.get(e.src, e.src)} {e.relation} {id2label.get(e.dst, e.dst)}",
                 source_id=prov.source_id if prov else None,
                 recorded_at=prov.recorded_at if prov else e.recorded_at,
                 confirmations=w,
                 confidence=_confidence(w),
+                valid_from=e.valid_from,
+                supersedes_prior=prior is not None,
+                prior_value=prior,
             ))
         return out
 
@@ -373,6 +514,16 @@ class Memory:
         if hasattr(self.cache, "clear"):
             self.cache.clear()  # cached answers may contain the erased content
         self.mesh.broadcast_version(self.store.version(), invalidated=[])
+        self._emit(MemoryEvent(
+            kind=MemoryEventKind.FORGET,
+            subject=None,
+            relation=None,
+            old_value=None,
+            new_value=None,
+            valid_from=utcnow(),
+            source_event_id=source_id,
+            tenant_id=self.tenant_id,
+        ))
         return receipt
 
     def conflicts(self) -> list[dict]:
