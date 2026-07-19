@@ -12,6 +12,7 @@ jobs:
     environment: pypi
     permissions:
       id-token: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -32,11 +33,37 @@ jobs:
       - name: Verify package
         run: twine check dist/*
 
+      - name: Resolve package version
+        id: version
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Package version: $VERSION"
+
+      - name: Check if version already on PyPI
+        id: pypi
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          URL="https://pypi.org/pypi/prismcortex/${VERSION}/json"
+          if curl -sf "$URL" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "prismcortex==${VERSION} already on PyPI — skipping upload."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "prismcortex==${VERSION} not on PyPI — will publish."
+          fi
+
+      # Trusted publishing — configure once at:
+      # https://pypi.org/manage/project/prismcortex/settings/publishing/
+      # Owner: insightitsGit · Repo: PrismCortex · Workflow: publish.yml · Environment: pypi
       - name: Publish to PyPI
+        if: steps.pypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # Safe when the version was already uploaded (manual twine / prior run).
           skip-existing: true
-        # Configure trusted publishing at:
-        # https://pypi.org/manage/project/prismcortex/settings/publishing/
-        # Publisher: insightitsGit/PrismCortex, workflow: publish.yml, env: pypi
+
+      - name: Publish skipped (already on PyPI)
+        if: steps.pypi.outputs.exists == 'true'
+        run: |
+          echo "No upload needed for prismcortex==${{ steps.version.outputs.version }}."
+          echo "Test/build/verify already passed."
