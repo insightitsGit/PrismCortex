@@ -3,6 +3,7 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -33,6 +34,9 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Safe when the version was already uploaded (manual twine / prior run).
+          skip-existing: true
         # Configure trusted publishing at:
         # https://pypi.org/manage/project/prismcortex/settings/publishing/
         # Publisher: insightitsGit/PrismCortex, workflow: publish.yml, env: pypi
