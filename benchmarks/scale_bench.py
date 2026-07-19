@@ -17,9 +17,17 @@ import time
 from pathlib import Path
 
 from prismcortex.adapters.ann import AnnGraphStore
-from prismcortex.adapters.prism import PrismLangProjector
-from prismcortex.adapters.reference import InMemoryGraphStore
+from prismcortex.adapters.reference import HashingProjector, InMemoryGraphStore
 from prismcortex.models import DeltaOp, Edge, Node, Operation, StateDelta
+
+
+def _projector():
+    """Prefer PrismLang when installed; fall back to hashing for OSS/CI without [prism]."""
+    try:
+        from prismcortex.adapters.prism import PrismLangProjector
+        return PrismLangProjector(tenant_id="scale")
+    except Exception:  # noqa: BLE001 — optional extra missing or import error
+        return HashingProjector(dim=384)
 
 ADJ = ["agile", "global", "secure", "modular", "unified", "adaptive", "realtime", "hybrid",
        "distributed", "neural", "federated", "elastic", "resilient", "semantic", "autonomous",
@@ -55,7 +63,7 @@ def make_store(*, use_ann: bool, ann_threshold: int) -> InMemoryGraphStore:
     return InMemoryGraphStore()
 
 
-def build(store: InMemoryGraphStore, proj: PrismLangProjector, start: int, end: int) -> float:
+def build(store: InMemoryGraphStore, proj, start: int, end: int) -> float:
     t0 = time.perf_counter()
     for i in range(start, end):
         sid, vid = f"s_{i}", f"v_{i}"
@@ -67,7 +75,7 @@ def build(store: InMemoryGraphStore, proj: PrismLangProjector, start: int, end: 
     return time.perf_counter() - t0
 
 
-def evaluate(store: InMemoryGraphStore, proj: PrismLangProjector, n: int, sample: int = 200, k: int = 8):
+def evaluate(store: InMemoryGraphStore, proj, n: int, sample: int = 200, k: int = 8):
     step = max(1, n // sample)
     qs = list(range(0, n, step))[:sample]
     hits = edge_hits = 0
@@ -100,7 +108,7 @@ def run_benchmark(
     sample: int = 200,
     k: int = 8,
 ) -> dict:
-    proj = PrismLangProjector(tenant_id="scale")
+    proj = _projector()
     store = make_store(use_ann=use_ann, ann_threshold=ann_threshold)
     mode = "ann" if use_ann else "linear"
     rows = []
