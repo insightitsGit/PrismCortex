@@ -36,3 +36,10 @@ Optional (defaults: sanitize + extract constraints on; verify off):
 | `verify_citations` | `False` | Attach `RecallResult.citation_score` |
 
 Additive `RecallResult` fields: `constraints`, `citation_score`, `sanitized`.
+
+## Known gaps (documented, not claimed done)
+
+| Topic | Status |
+|-------|--------|
+| Multi-modal / tabular sanitization | Future — see [ROADMAP](../ROADMAP.md#post-040-edge-cases-future-releases) |
+| Pinecone / Qdrant / Milvus filter adapters | Future — pgvector SQL path works today |
