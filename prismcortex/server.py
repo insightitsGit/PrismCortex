@@ -26,6 +26,7 @@ from .auth import (
     authenticate,
 )
 from .engine import Memory
+from . import __version__ as _PKG_VERSION
 from .labels import aliases_snapshot, load_aliases, register_alias, save_aliases
 from .policy import PolicyEngine
 from .server_helpers import CountingGemini, rate_limiter_from_env, read_executor, write_executor
@@ -176,7 +177,7 @@ def _deny(msg: str, code: int = 403) -> JSONResponse:
     return JSONResponse({"detail": msg}, status_code=code)
 
 
-app = FastAPI(title="PrismCortex", version="0.3.0")
+app = FastAPI(title="PrismCortex", version=_PKG_VERSION)
 _static = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static):
     app.mount("/console", StaticFiles(directory=_static, html=True), name="console")
@@ -242,7 +243,7 @@ def health():
         alerts.append({"level": "warn", "msg": f"errors={metrics.counts['errors']}"})
     return {
         "ok": True,
-        "version": "0.3.0",
+        "version": _PKG_VERSION,
         "backend": _backend,
         "auth": auth_required(),
         "multi_tenant": True,

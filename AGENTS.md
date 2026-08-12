@@ -11,7 +11,7 @@
 | Field | Value |
 |-------|-------|
 | **Product** | PrismCortex — compliance-grade agent memory |
-| **Version** | v0.3.0 (PyPI + Azure benchmarks on 0.2.1 scorecard) |
+| **Version** | v0.4.0 (PyPI; Azure benchmarks still cite 0.2.1 scorecard) |
 | **Owner** | Insight IT Solutions LLC |
 | **Email** | info@insightits.com |
 | **Phone** | +1 (973) 692-6919 |
@@ -28,7 +28,7 @@
 |----------|-----|-------|
 | **GitHub repository** | https://github.com/insightitsGit/PrismCortex | **PUBLIC** since 2026-06-29 |
 | **Default branch** | `master` | |
-| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.3.0` |
+| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.4.0` |
 | **Whitepaper (repo)** | https://github.com/insightitsGit/PrismCortex/blob/master/docs/WHITEPAPER.md | |
 | **Benchmark scorecard** | https://github.com/insightitsGit/PrismCortex/blob/master/benchmarks/RESULTS.md | |
 | **OpenAPI (when server running)** | `http://<host>:8080/docs` | FastAPI auto-docs |
@@ -48,6 +48,7 @@
 | 1 | [AGENTS.md](AGENTS.md) | This file — URLs, contacts, processes |
 | 2 | [README.md](README.md) | Developer quickstart, install, API overview |
 | 3 | [docs/WHITEPAPER.md](docs/WHITEPAPER.md) | Product whitepaper for buyers and marketing |
+| 3b | [docs/USE_CASES.md](docs/USE_CASES.md) | Problem → architecture mappings (stale policy, multi-hop, ratchet, audit) |
 | 4 | [infoAlex.md](infoAlex.md) | GTM, landing page spec, trial/pricing, copy bank |
 | 5 | [DESIGN.md](DESIGN.md) | Engineering design spec |
 | 6 | [benchmarks/RESULTS.md](benchmarks/RESULTS.md) | Azure E2E validation numbers |

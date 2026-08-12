@@ -5,8 +5,9 @@
 PRODUCT
 Name: PrismCortex
 Description: Deterministic, auditable, self-consolidating memory for AI agents. Compliance-grade agent memory with byte-identical replay, bitemporal audit, and self-hosted sovereignty.
-Version: 0.3.0
+Version: 0.4.0
 Owner: Insight IT Solutions LLC
+Author: Amin Parva
 
 URLS
 GitHub: https://github.com/insightitsGit/PrismCortex

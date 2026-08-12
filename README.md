@@ -5,73 +5,85 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/github/stars/insightitsGit/PrismCortex?style=social)](https://github.com/insightitsGit/PrismCortex)
 
-**Deterministic, auditable, self-consolidating memory for AI agents.**
+**Deterministic, bitemporal memory engine for multi-turn AI agents.**
 
-Compliance-grade memory for regulated teams: **byte-identical replay**, **bitemporal audit**,
-and **self-hosted sovereignty** — not another vector chat log.
+Eliminate context decay, stale vector collisions, non-deterministic replay failures,
+and hallucination ratchets in production RAG/agent architectures.
 
-**Repository:** https://github.com/insightitsGit/PrismCortex *(public)*
+**Repository:** https://github.com/insightitsGit/PrismCortex *(public)* · **Package:** `prismcortex` **0.4.0**
 
-🤖 **[AI agent handoff](AGENTS.md)** · 📄 **[Whitepaper](docs/WHITEPAPER.md)** · 📊 **[Benchmarks](benchmarks/RESULTS.md)** · ⚖️ **[How we compare](compare.md)** · 🗺️ **[Roadmap](ROADMAP.md)** · 🏗️ **[Design spec](DESIGN.md)**
+**Author:** Amin Parva · **Company:** [Insight IT Solutions LLC](https://www.insightits.com) · [www.insightits.com](https://www.insightits.com)
+
+[AI agent handoff](AGENTS.md) · [Whitepaper](docs/WHITEPAPER.md) · [Use cases](docs/USE_CASES.md) · [Benchmarks](benchmarks/RESULTS.md) · [How we compare](compare.md) · [Design](DESIGN.md)
 
 **Product page:** [insightits.com/products/prismcortex](https://www.insightits.com/products/prismcortex.html)
 
 ---
 
-**AI assistants:** [docs/ai-overview.md](docs/ai-overview.md) · [docs/llm-context.md](docs/llm-context.md) · [docs/architecture.md](docs/architecture.md)
+## Why standard RAG memory fails
 
-## What is this?
-
-Deterministic, auditable, self-consolidating memory for AI agents (byte-identical replay, bitemporal audit).
-
-**Package:** `prismcortex` **0.3.0** · Azure E2E scorecard still cites the v0.2.1 run
-
-## Who is it for?
-
-Regulated teams needing compliance-grade agent memory, not a chat-log vector store.
-
-## What problem does it solve?
-
-Chat-log / SaaS memory fails audit, correction, and residency requirements.
-
-## When NOT to use it
-
-You only need ephemeral chat history with no audit requirements.
-
-### What's new in 0.3.0
-
-- **`mem.on_event(callback)`** — correction / conflict / forget notifications for PrismShine and cache invalidation (`MemoryEvent`)
-- **Evidence correction metadata** — `valid_from`, `supersedes_prior`, `prior_value` on `/explain`
-- **`[prism-plus]` extra** — use `prismlib-plus` instead of `prismlib` (mutually exclusive with `[prism]`)
-- Release notes: [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md)
+| Failure mode | What goes wrong in production |
+|--------------|-------------------------------|
+| **Stale knowledge collisions** | Naive vector similarity returns superseded policies alongside active ones — the agent cites both. |
+| **Context decay & anaphora loss** | Parent entity subject is lost across multi-turn sessions; “it / that / the policy” no longer resolve. |
+| **Multi-hop blindness** | Continuous vector spaces fail at logical dependency joins (A→B→C) that a graph can walk. |
+| **Non-reproducible replays** | You cannot prove byte-identical state for audit — temperature-0 LLM calls still drift. |
 
 ---
 
-## Why PrismCortex exists
+## How PrismCortex fixes it
 
-Most agent memory is an append-only chat log or a vector store in someone else's cloud.
-That breaks in production when:
+| Capability | Where it lives | What you get |
+|------------|----------------|--------------|
+| **Bitemporal auditing** | `determinism.py`, graph edges (`valid_from` / `valid_to`) | Separates real-world event time from ingestion/system time; corrections soft-invalidate, never erase. |
+| **Causal graph links** | `engine.py`, `tests/test_graph_engine.py` | Extracted facts become relational edges — not isolated float arrays. |
+| **Salience & consolidation** | `salience.py`, `Memory.sleep()` | Skips low-value turns; parks uncertain facts; consolidates without dropping history. |
+| **Byte-identical replay** | content-addressed cache + `/replay_certificate` | Reproducible answer audits for SOC 2–aligned / compliance workflows. |
 
-- Legal asks *"what did the agent know on March 3rd?"* — and you grep chat logs  
-- A correction ($40k → $55k) doesn't reliably surface — or erases audit history  
-- Compliance rejects third-party memory SaaS for data residency  
+**API surface (real):** `digest()` → graph · `recall()` → frozen answer · `sleep()` → consolidate · `explain()` → evidence.
 
-PrismCortex **digests** each turn into a knowledge graph, **consolidates** uncertain facts
-in the background (`sleep()`), and **recalls** by rendering facts once and freezing answers
-in a content-addressed cache.
+---
+
+## 5-line quickstart
 
 ```python
 from prismcortex import reference_memory
 
-mem = reference_memory(cache_path=".prismcortex_cache/demo.json")
-
-mem.digest("My production deploy budget is $40,000.")
-print(mem.recall("What's my deploy budget?").answer)        # → "$40,000"
-
-mem.digest("Correction: my deploy budget is now $55,000.")  # fast-tracked (ALERT)
-print(mem.recall("What's my deploy budget?").answer)        # → "$55,000"
-# The $40,000 fact is still on record — time-stamped — for audit / time-travel.
+mem = reference_memory()  # GEMINI_API_KEY for real extraction
+mem.digest("California parental leave updated to 12 weeks.")
+print(mem.recall("What is our CA leave policy?").answer)
+# Correction keeps history: digest a change → recall new value; old edge retains valid_to.
 ```
+
+Zero-dependency demo (no API key — rule-based extractor):
+
+```bash
+python examples/quickstart.py
+```
+
+With real Gemini:
+
+```bash
+pip install "prismcortex[gemini]"
+GEMINI_API_KEY=... python examples/quickstart.py
+```
+
+---
+
+## Competitive positioning
+
+Mem0 / Zep lead **published accuracy** suites (LoCoMo, LongMemEval). PrismCortex leads **compliance** — temporal audit, consolidation, causal graph, and byte-identical replay. Do not claim LoCoMo wins until a full PrismCortex run is published.
+
+| Capability | Naive vector RAG | Mem0 / Zep | **PrismCortex** |
+|------------|------------------|------------|-----------------|
+| **Temporal auditing** | No (append / re-rank) | Platform / graph varies | **Yes** — OSS bitemporal edges |
+| **Execution replay** | No | No byte-identical answers | **Yes** — 24/24 Azure E2E |
+| **Memory consolidation** | Truncate / summarize | Product features vary | **Yes** — salience + `sleep()` |
+| **Causal graph engine** | Flat embeddings | Zep: temporal graph; Mem0: memory store | **Yes** — relation edges + evidence |
+
+Live correction head-to-head (same Gemini): PrismCortex surfaced **$55k** after **$40k → $55k**; Mem0 OSS top retrieval stayed **$40k** in our run — [vs_mem0.json](benchmarks/results/competitive/vs_mem0.json).
+
+Full tables: [compare.md](compare.md) · [docs/COMPETITIVE.md](docs/COMPETITIVE.md)
 
 ---
 
@@ -79,34 +91,14 @@ print(mem.recall("What's my deploy budget?").answer)        # → "$55,000"
 
 | Claim | Result |
 |-------|--------|
-| Replay determinism | **24/24** byte-identical replays |
+| Replay determinism | **24/24** byte-identical |
 | Corrections + audit | **$40k → $55k**; superseded fact retained |
-| Cost / cache | **99.6% hit rate** — 30 Gemini calls / 2,563 recalls |
+| Cache | **99.6%** hit — 30 Gemini / 2,563 recalls |
 | Cached replay | **~6 ms** vs **~724 ms** first render |
-| Mixed load (c=20) | **0 errors** on 4 vCPU node |
-| Reference load SLO | **PASS** (`slo_pass: true`) — recall + mixed @ c=20, digest @ c=16 |
-| Server reliability | **0 errors** on core path |
-| Scale (50k facts, ANN) | **85% hit@8**, **74 ms** p95 retrieval |
+| Mixed load (c=20) | **0 errors** on 4 vCPU · `slo_pass: true` |
+| Scale (50k facts, ANN) | **85% hit@8**, **74 ms** p95 |
 
-Details: [benchmarks/RESULTS.md](benchmarks/RESULTS.md) · [docs/WHITEPAPER.md](docs/WHITEPAPER.md)
-
----
-
-## How we compare
-
-Mem0 and Zep lead **published accuracy benchmarks** (LoCoMo, LongMemEval, DMR). PrismCortex leads **compliance** — byte-identical replay, bitemporal audit, and self-hosted sovereignty.
-
-| | Mem0 *(published)* | Zep *(published)* | **PrismCortex** *(live)* |
-|---|---------------------|-------------------|---------------------------|
-| LoCoMo accuracy | **91.6%** | — | Full run pending |
-| Correction test ($40k→$55k) | Top hit stale in our OSS run | — | **Yes** — new value + audit trail |
-| Byte-identical replay | No | No | **24/24** on Azure |
-| Bitemporal audit (OSS) | Varies | Graph | **Yes** |
-| Self-hosted default | OSS + SaaS | SaaS | **Yes** |
-
-**Head-to-head:** same Gemini, same correction — PrismCortex surfaced **$55k** after update; Mem0 OSS top retrieval stayed **$40k** in our live test. Reproducible: [benchmarks/results/competitive/vs_mem0.json](benchmarks/results/competitive/vs_mem0.json).
-
-**Landing page spec for agents:** [compare.md](compare.md) · **Full technical comparison:** [docs/COMPETITIVE.md](docs/COMPETITIVE.md)
+Details: [benchmarks/RESULTS.md](benchmarks/RESULTS.md)
 
 ---
 
@@ -116,94 +108,34 @@ Mem0 and Zep lead **published accuracy benchmarks** (LoCoMo, LongMemEval, DMR). 
 pip install prismcortex                  # core (MIT)
 pip install "prismcortex[gemini]"        # + real Gemini extraction/rendering
 pip install "prismcortex[prism]"         # + Insight ITS stack with prismlib
-pip install "prismcortex[prism-plus]"    # + same stack with prismlib-plus (ChorusGraph)
+pip install "prismcortex[prism-plus]"    # + same stack with prismlib-plus
 pip install "prismcortex[server]"        # + FastAPI HTTP service
-pip install "prismcortex[gemini,server,prism]"   # production stack
 ```
 
-Requires **Python 3.10+**.
+Requires **Python 3.10+**. `[prism]` and `[prism-plus]` are mutually exclusive.
 
-**`[prism]` and `[prism-plus]` are mutually exclusive** — both install the `prism` import
-namespace. Use `[prism]` for standalone PrismCortex; use `[prism-plus]` when the host
-already depends on `prismlib-plus` (e.g. ChorusGraph). Do not install both extras.
-
----
-
-## Two ways to run
-
-### 1. Python library (in-process)
-
-Best for a single agent embedded in your app:
-
-```python
-from prismcortex import reference_memory
-
-mem = reference_memory()   # needs GEMINI_API_KEY for real extraction
-mem.digest("We use Postgres 16 in us-east-1.")
-result = mem.recall("Where is our database hosted?")
-print(result.answer, result.cache_hit, result.confidence)
-
-# Optional: subscribe to corrections (PrismShine / semantic-cache eviction)
-unsub = mem.on_event(lambda ev: print(ev.kind, ev.old_value, "→", ev.new_value))
-# unsub() when done
-```
-
-### 2. HTTP service (multi-agent, Docker, Azure)
-
-Best for platform teams and non-Python clients:
+### HTTP service
 
 ```bash
 export GEMINI_API_KEY=...
 export PRISMCORTEX_API_KEY=your-secret
 uvicorn prismcortex.server:app --host 0.0.0.0 --port 8080
-# OpenAPI docs: http://localhost:8080/docs
+# OpenAPI: http://localhost:8080/docs
 ```
 
-```bash
-curl -X POST http://localhost:8080/digest \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-secret" \
-  -d '{"text": "Our deploy budget is $40,000."}'
+### What's new in 0.4.0
 
-curl -X POST http://localhost:8080/recall \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-secret" \
-  -d '{"query": "What is our deploy budget?"}'
-```
+- **`ConstraintCompiler`** — NL → JSON / PostgreSQL filters for numeric & date bounds
+- **`CorpusSanitizer`** — strip prompt-injection payloads before LLM context
+- **`CitationVerifier`** — non-LLM 0..1 entailment score for recalled facts vs answers
+- Wired into `Memory.recall` (`sanitize_retrieval`, `extract_constraints`, `verify_citations`)
+- Release notes: [docs/CHANGELOG_0.4.0.md](docs/CHANGELOG_0.4.0.md)
 
-Docker + Azure deploy: see [deploy/run_only.sh](deploy/run_only.sh).
+### What's new in 0.3.0
 
----
-
-## Why it's different
-
-| | Append-only RAG | PrismCortex |
-|---|---|---|
-| Storage | every chat turn | graph topology (the *gist*) |
-| Updates | append + hope retrieval ranks it | bitemporal: invalidate old, add new, **keep history** |
-| Determinism | logs + LLM drift | content-addressed cache, **replay-identical** |
-| Cost | re-extract every call | salience-gated writes, **cached reads** |
-| Audit | grep the logs | evidence trail + **replay certificate** |
-
----
-
-## Enterprise features (v0.3)
-
-| Feature | Endpoint / module |
-|---------|-------------------|
-| Explainability | `POST /explain` |
-| Time-travel recall | `POST /recall_at` |
-| Replay certificate | `GET /replay_certificate` |
-| Conflict surfacing | `GET /conflicts`, `POST /conflicts/resolve` |
-| GDPR erasure | `POST /forget` |
-| Legal hold | `POST /legal_hold` |
-| Multi-tenant + RBAC | `auth.py`, `tenant.py` |
-| Audit console | `GET /console` |
-| Metrics / ops | `GET /metrics`, `GET /dashboard` |
-| 50k+ facts (ANN) | `PRISMCORTEX_USE_ANN=1` |
-| Correction events | `Memory.on_event` → `MemoryEvent` (library) |
-
-Docs: [docs/SLA.md](docs/SLA.md) · [docs/CAPACITY.md](docs/CAPACITY.md) · [docs/SOC2_ROADMAP.md](docs/SOC2_ROADMAP.md) · [SECURITY.md](SECURITY.md)
+- `mem.on_event(callback)` — correction / conflict / forget (`MemoryEvent`)
+- Evidence fields: `valid_from`, `supersedes_prior`, `prior_value`
+- `[prism-plus]` extra — see [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md)
 
 ---
 
@@ -212,104 +144,54 @@ Docs: [docs/SLA.md](docs/SLA.md) · [docs/CAPACITY.md](docs/CAPACITY.md) · [doc
 ```
 digest(text) ─▶ salience gate ─▶ extract gist ─▶ delta in RAM
                    ├─ certain / urgent ─▶ commit  (version++)
-                   └─ uncertain ───────▶ staging buffer ──▶ sleep() ──▶ commit
+                   └─ uncertain ───────▶ staging ──▶ sleep() ──▶ commit
 
 recall(query) ─▶ retrieve subgraph ─▶ cache hit? replay (byte-identical)
                                     └─ miss? render once → freeze
 ```
 
-| Port | Reference (core, no Prism deps) | Production extras |
-|------|--------------------------------|-------------------|
-| Gist projection | hashing embeddings | `prismlang` (`[prism]` / `[prism-plus]`) |
-| Graph store | in-memory bitemporal | Cortex-owned store (+ `prismrag-patch` governor) |
-| Consolidation | in-process | `prismresonance` |
-| Render cache | JSON file | `prismlib` **or** `prismlib-plus` |
-| Extraction | — | Gemini (`[gemini]`) |
-
-**Dependency note:** `pip install prismcortex` needs only `pydantic`, `numpy`, and `cryptography`.
-Prism-family packages are **optional** via `[prism]` or `[prism-plus]`.
-
-Full design: [DESIGN.md](DESIGN.md) · Whitepaper: [docs/WHITEPAPER.md](docs/WHITEPAPER.md) · Changelog: [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md)
+Determinism claim (honest): we do **not** claim temperature-0 LLM identity. We claim **replay** identity after first render for a `(query, memory-version)` pair. See [DESIGN.md](DESIGN.md).
 
 ---
 
-## Determinism, honestly
-
-We do **not** claim "temperature 0 = identical output" for shared API models.
-
-We claim **replay determinism**: once an answer is rendered for a `(query, memory-version)`
-pair, it is frozen and replayed byte-identically. Facts are extractive from the graph;
-prose is frozen after first render. See [DESIGN.md §2](DESIGN.md#2-the-determinism-model-the-honest-version).
-
----
-
-## Development & benchmarks
+## Development
 
 ```bash
 git clone https://github.com/insightitsGit/PrismCortex.git
 cd PrismCortex
 pip install -e ".[dev,gemini,server]"
 
-pytest tests/test_graph_engine.py          # no API key
-GEMINI_API_KEY=... pytest                  # full suite
-
-python benchmarks/scale_bench.py --ann     # 50k ANN scale test
-BACKEND=prism bash deploy/run_only.sh      # Azure E2E (needs .env)
+pytest tests/                          # graph tests need no API key
+GEMINI_API_KEY=... pytest              # full suite
+python examples/quickstart.py          # zero-deps path
+python benchmarks/scale_bench.py --ann
 ```
 
-### Publish 0.3.0 to PyPI
-
-```powershell
-# Requires PYPI_API_TOKEN in .env (never commit)
-.\scripts\publish_pypi.ps1
-# Or: create a GitHub Release → .github/workflows/publish.yml (trusted publishing)
-```
-
-Verify: `pip install prismcortex==0.3.0` · https://pypi.org/project/prismcortex/
+Azure E2E / load driver (needs running server): `python benchmarks/driver.py` — see [docs/OPS_RUNBOOK.md](docs/OPS_RUNBOOK.md).
 
 ---
 
-## Documentation index
+## Documentation
 
 | Doc | Contents |
 |-----|----------|
-| [AGENTS.md](AGENTS.md) | **AI agent handoff** — canonical URLs, contacts, processes |
-| [docs/CHANGELOG_0.3.0.md](docs/CHANGELOG_0.3.0.md) | **0.3.0 release notes** — MemoryEvent, packaging |
-| [ai-info.txt](ai-info.txt) | Machine-readable product summary for LLM crawlers |
-| [docs/WHITEPAPER.md](docs/WHITEPAPER.md) | **Product whitepaper** — problem, architecture, validation |
-| [DESIGN.md](DESIGN.md) | Engineering design spec |
-| [benchmarks/RESULTS.md](benchmarks/RESULTS.md) | Azure benchmark scorecard |
-| [ROADMAP.md](ROADMAP.md) | Enterprise GA plan + honest gaps |
-| [docs/SLA.md](docs/SLA.md) | Reference SLOs + commercial tiers |
-| [docs/CAPACITY.md](docs/CAPACITY.md) | Sizing guide (~20 concurrent clients / 4 vCPU) |
-| [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | **Load test explainer** — what we fixed, how to read SLO fields |
-| [docs/NOTEBOOKLM_STORY.md](docs/NOTEBOOKLM_STORY.md) | **NotebookLM source** — story, how-to, marketing & technical briefing |
-| [compare.md](compare.md) | **Landing page spec** — comparison tables, copy blocks for insightits.com |
-| [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | **Market comparison** — Mem0/Zep, LoCoMo, head-to-head |
-| [docs/SCALING.md](docs/SCALING.md) | Horizontal read scaling story |
-| [docs/SUPPORT.md](docs/SUPPORT.md) | 24×7 Enterprise support model |
-| [docs/SOC2_ROADMAP.md](docs/SOC2_ROADMAP.md) | Compliance readiness |
+| [AGENTS.md](AGENTS.md) | Canonical URLs, contacts, processes |
+| [docs/USE_CASES.md](docs/USE_CASES.md) | Problem → architecture mappings |
+| [docs/WHITEPAPER.md](docs/WHITEPAPER.md) | Product whitepaper |
+| [DESIGN.md](DESIGN.md) | Engineering design |
+| [benchmarks/RESULTS.md](benchmarks/RESULTS.md) | Azure scorecard |
+| [compare.md](compare.md) / [docs/COMPETITIVE.md](docs/COMPETITIVE.md) | Market comparison |
+| [docs/CAPACITY.md](docs/CAPACITY.md) / [docs/LOAD_BENCHMARK.md](docs/LOAD_BENCHMARK.md) | Sizing & load SLO |
 | [SECURITY.md](SECURITY.md) | Security posture |
 
 ---
 
 ## Licensing
 
-**Open-core (MIT):** `digest`/`recall`, bitemporal graph, determinism cache — free on PyPI.
+**Open-core (MIT):** `digest` / `recall`, bitemporal graph, determinism cache — free on PyPI.
 
-**Commercial:** audit console, advanced governance, scale tiers — **offline Ed25519 license key**,
-no phone-home, air-gap friendly. See [DESIGN.md §7](DESIGN.md#7-packaging--licensing-open-core-self-hosted).
+**Commercial:** audit console, advanced governance, scale tiers — offline Ed25519 key, no phone-home.
 
-Enterprise: [info@insightits.com](mailto:info@insightits.com) · +1 (973) 692-6919 · [Insight IT Solutions LLC](https://www.insightits.com)  
-Address: 39 Aliso Ridge Loop, Mission Viejo, CA 92691, US
+Enterprise: [info@insightits.com](mailto:info@insightits.com) · +1 (973) 692-6919 · [Insight IT Solutions LLC](https://www.insightits.com) · [www.insightits.com](https://www.insightits.com)
 
----
-
-## Related Insight ITS products
-
-PrismCortex orchestrates the Insight ITS stack. Related products:
-
-- [PrismRAG](https://www.insightits.com/products/prismrag.html) — governed enterprise RAG  
-- [PrismLang](https://www.insightits.com/products/prismlang.html) — deterministic projection  
-- [PrismResonance](https://www.insightits.com/products/prism-resonance.html) — wavepacket memory  
-- [CHORUS Fabric](https://www.insightits.com/products/chorus-fabric.html) — agent mesh protocol  
+**Author:** Amin Parva
