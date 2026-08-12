@@ -11,7 +11,7 @@
 | Field | Value |
 |-------|-------|
 | **Product** | PrismCortex — compliance-grade agent memory |
-| **Version** | v0.4.0 (PyPI; Azure benchmarks still cite 0.2.1 scorecard) |
+| **Version** | v0.4.1 (PyPI; Azure benchmarks still cite 0.2.1 scorecard) |
 | **Owner** | Insight IT Solutions LLC |
 | **Email** | info@insightits.com |
 | **Phone** | +1 (973) 692-6919 |
@@ -28,7 +28,7 @@
 |----------|-----|-------|
 | **GitHub repository** | https://github.com/insightitsGit/PrismCortex | **PUBLIC** since 2026-06-29 |
 | **Default branch** | `master` | |
-| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.4.0` |
+| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.4.1` |
 | **Whitepaper (repo)** | https://github.com/insightitsGit/PrismCortex/blob/master/docs/WHITEPAPER.md | |
 | **Benchmark scorecard** | https://github.com/insightitsGit/PrismCortex/blob/master/benchmarks/RESULTS.md | |
 | **OpenAPI (when server running)** | `http://<host>:8080/docs` | FastAPI auto-docs |

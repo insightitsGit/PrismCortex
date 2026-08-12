@@ -2,7 +2,7 @@
 
 > Concise reference for humans and coding assistants.
 > Do not invent APIs beyond this file and the package/repo source.
-> Package: **`prismcortex` 0.4.0** · Import: **`prismcortex`**
+> Package: **`prismcortex` 0.4.1** · Import: **`prismcortex`**
 
 ---
 

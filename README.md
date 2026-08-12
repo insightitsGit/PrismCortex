@@ -9,7 +9,7 @@
 > Stop agent memory decay, stale vector collisions, indirect prompt injection, and
 > non-deterministic hallucination loops in production RAG systems.
 
-**Repository:** https://github.com/insightitsGit/PrismCortex *(public)* · **Package:** [`prismcortex` 0.4.0](https://pypi.org/project/prismcortex/0.4.0/)
+**Repository:** https://github.com/insightitsGit/PrismCortex *(public)* · **Package:** [`prismcortex` 0.4.1](https://pypi.org/project/prismcortex/0.4.1/)
 
 **Author:** Amin Parva · **Company:** [Insight IT Solutions LLC](https://www.insightits.com) · [www.insightits.com](https://www.insightits.com)
 
@@ -151,6 +151,11 @@ export PRISMCORTEX_API_KEY=your-secret
 uvicorn prismcortex.server:app --host 0.0.0.0 --port 8080
 # OpenAPI: http://localhost:8080/docs
 ```
+
+### What's new in 0.4.1
+
+- SEO / lead-gen README refresh on PyPI (same code as 0.4.0)
+- Documented post-0.4.0 roadmap gaps (multi-modal + vendor vector filters)
 
 ### What's new in 0.4.0
 
