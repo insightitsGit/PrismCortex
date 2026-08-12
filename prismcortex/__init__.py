@@ -8,6 +8,7 @@
 Swap the reference adapters for the real Insight ITS packages (prismlang, prismrag,
 prismresonance, prismlib, Chorus) one port at a time — the engine never changes.
 """
+from .constraints import ConstraintCompiler
 from .engine import Memory
 from .factory import reference_memory
 from .models import (
@@ -23,12 +24,17 @@ from .models import (
     StateDelta,
     Subgraph,
 )
+from .sanitizer import CorpusSanitizer
+from .verifier import CitationVerifier
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "Memory",
     "reference_memory",
+    "ConstraintCompiler",
+    "CorpusSanitizer",
+    "CitationVerifier",
     "Band",
     "DigestOutcome",
     "DigestResult",

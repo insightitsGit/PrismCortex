@@ -186,6 +186,10 @@ class RecallResult(BaseModel):
     provisional: bool = False    # answer touched staged (unconsolidated) knowledge
     confidence: float = 1.0      # 0..1, from how reinforced the supporting facts are
     freshness: Optional[datetime] = None  # most recent time a supporting fact was confirmed
+    # Optional 0.4.0 retrieval hygiene / citation fields (defaults keep older clients OK).
+    constraints: Optional[dict] = None
+    citation_score: Optional[float] = None
+    sanitized: bool = False
 
 
 class Evidence(BaseModel):

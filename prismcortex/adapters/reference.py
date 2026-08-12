@@ -322,6 +322,7 @@ class DurableCache:
     def put(self, key: str, value: str) -> None:
         self._store[key] = value
         if self._path:  # durable: a frozen answer survives restart / eviction.
+            self._path.parent.mkdir(parents=True, exist_ok=True)
             self._path.write_text(json.dumps(self._store), encoding="utf-8")
 
     def clear(self) -> None:

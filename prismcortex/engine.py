@@ -101,6 +101,9 @@ class Memory:
         resolve_threshold: float = 0.88,
         max_facts: Optional[int] = None,
         tenant_id: str = "default",
+        sanitize_retrieval: bool = True,
+        extract_constraints: bool = True,
+        verify_citations: bool = False,
     ) -> None:
         self.projector = projector
         self.extractor = extractor
@@ -115,7 +118,17 @@ class Memory:
         self.resolve_threshold = resolve_threshold
         self.max_facts = max_facts
         self.tenant_id = tenant_id
+        self.sanitize_retrieval = sanitize_retrieval
+        self.extract_constraints = extract_constraints
+        self.verify_citations = verify_citations
         self._event_subscribers: list[MemoryEventCallback] = []
+        from .constraints import ConstraintCompiler
+        from .sanitizer import CorpusSanitizer
+        from .verifier import CitationVerifier
+
+        self.constraints = ConstraintCompiler()
+        self.sanitizer = CorpusSanitizer()
+        self.verifier = CitationVerifier()
 
     def on_event(self, callback: MemoryEventCallback) -> Unsubscribe:
         """Subscribe to correction / conflict / forget notifications.
@@ -486,25 +499,72 @@ class Memory:
         return Subgraph(nodes=nodes, edges=edges)
 
     def recall(self, query: str) -> RecallResult:
+        constraints_json = None
+        if self.extract_constraints:
+            constraints_json = self.constraints.compile_json(query)
+
         emb = self.projector.embed(query)
         version = self.store.version()
         subgraph = self._expand_subgraph(self.store.retrieve(emb, k=self.k), query)
+
+        sanitized = False
+        if self.sanitize_retrieval:
+            subgraph, sanitized = self._sanitize_subgraph(subgraph)
+
         key = content_address(query, subgraph, self.template_id, self.renderer.model_id)
         ans_key = "ans:" + key
 
         node_ids = [n.id for n in subgraph.nodes]
         edge_ids = [e.id for e in subgraph.edges if e.is_current]
         conf, fresh = self._confidence_freshness(subgraph)
-        common = dict(subgraph_hash=key, version=version.version, model_id=self.renderer.model_id,
-                      node_ids=node_ids, edge_ids=edge_ids, confidence=conf, freshness=fresh)
+        common = dict(
+            subgraph_hash=key,
+            version=version.version,
+            model_id=self.renderer.model_id,
+            node_ids=node_ids,
+            edge_ids=edge_ids,
+            confidence=conf,
+            freshness=fresh,
+            constraints=constraints_json,
+            sanitized=sanitized,
+        )
 
         cached = self.cache.get(ans_key)
         if cached is not None:
-            return RecallResult(answer=cached, cache_hit=True, **common)
+            citation = self._citation_score(subgraph, cached) if self.verify_citations else None
+            return RecallResult(answer=cached, cache_hit=True, citation_score=citation, **common)
 
         answer = self.renderer.render(query, subgraph)  # the one stochastic draw
         self.cache.put(ans_key, answer)                 # frozen → byte-identical hereafter
-        return RecallResult(answer=answer, cache_hit=False, **common)
+        citation = self._citation_score(subgraph, answer) if self.verify_citations else None
+        return RecallResult(answer=answer, cache_hit=False, citation_score=citation, **common)
+
+    def _sanitize_subgraph(self, subgraph: Subgraph) -> tuple[Subgraph, bool]:
+        """Sanitize node labels before they enter the renderer context (copy, not mutate store)."""
+        from .models import Node
+
+        any_hit = False
+        nodes: list[Node] = []
+        for n in subgraph.nodes:
+            result = self.sanitizer.sanitize(n.label)
+            if result.redacted:
+                any_hit = True
+                nodes.append(n.model_copy(update={"label": result.text or n.label}))
+            else:
+                nodes.append(n)
+        if not any_hit:
+            return subgraph, False
+        return Subgraph(nodes=nodes, edges=list(subgraph.edges)), True
+
+    def _citation_score(self, subgraph: Subgraph, answer: str) -> float:
+        labels = {n.id: n.label for n in subgraph.nodes}
+        facts = [
+            f"{labels.get(e.src, e.src)} {e.relation} {labels.get(e.dst, e.dst)}"
+            for e in subgraph.edges
+            if e.is_current
+        ]
+        facts.extend(n.label for n in subgraph.nodes)
+        return self.verifier.verify(facts, answer).score
 
     def forget(self, source_id: str) -> dict:
         """Right-to-be-forgotten: erase every fact derived from `source_id` and clear the
