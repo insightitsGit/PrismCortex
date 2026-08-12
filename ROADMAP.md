@@ -81,6 +81,17 @@ health, legal, insurance) who cannot ship append-only chat logs or third-party S
 - [ ] **SBOM + pinned transitive deps** per release (audit is clean today; not locked)
 - [ ] **Replace the demo license public key**; rotate keys
 - [x] **Sync RESULTS.md** with v0.2 E2E numbers + sustained-load section (2026-06-29)
+- [x] **0.4.0 retrieval hygiene** — `ConstraintCompiler`, `CorpusSanitizer`, `CitationVerifier` (+ recall hooks)
+
+### Post-0.4.0 edge cases (future releases)
+
+Honest gaps after the text/JSON hygiene path shipped. Not blockers for current OSS use;
+planned differentiators for multi-modal and multi-vendor retrieval.
+
+| Gap | Today | Future work |
+|-----|-------|-------------|
+| **A. Non-text / structured memory** | `models.py` + `sanitizer.py` prioritize string labels and JSON metadata. Tabular schemas (SQL / DataFrames) and raw image/audio bytes bypass text sanitization and the NL constraint parser. `AssetPointer` exists for blobs but is not wired through sanitizer/constraints. | Structured-row sanitizers; schema-aware constraint compile; modality-specific citation spans |
+| **B. Distributed vector push-down** | `constraints.py` emits JSON + **PostgreSQL / pgvector** `WHERE` (native path ready). Pinecone / Qdrant / Milvus filter dialects are not mapped yet. | Vendor adapters: `CompiledConstraints` → Pinecone metadata filter / Qdrant `Filter` / Milvus expr |
 
 ---
 

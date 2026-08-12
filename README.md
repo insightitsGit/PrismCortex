@@ -5,18 +5,42 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/github/stars/insightitsGit/PrismCortex?style=social)](https://github.com/insightitsGit/PrismCortex)
 
-**Deterministic, bitemporal memory engine for multi-turn AI agents.**
+> **Deterministic, bitemporal memory & execution engine for multi-turn AI agents.**
+> Stop agent memory decay, stale vector collisions, indirect prompt injection, and
+> non-deterministic hallucination loops in production RAG systems.
 
-Eliminate context decay, stale vector collisions, non-deterministic replay failures,
-and hallucination ratchets in production RAG/agent architectures.
-
-**Repository:** https://github.com/insightitsGit/PrismCortex *(public)* · **Package:** `prismcortex` **0.4.0**
+**Repository:** https://github.com/insightitsGit/PrismCortex *(public)* · **Package:** [`prismcortex` 0.4.0](https://pypi.org/project/prismcortex/0.4.0/)
 
 **Author:** Amin Parva · **Company:** [Insight IT Solutions LLC](https://www.insightits.com) · [www.insightits.com](https://www.insightits.com)
 
 [AI agent handoff](AGENTS.md) · [Whitepaper](docs/WHITEPAPER.md) · [Use cases](docs/USE_CASES.md) · [Benchmarks](benchmarks/RESULTS.md) · [How we compare](compare.md) · [Design](DESIGN.md)
 
 **Product page:** [insightits.com/products/prismcortex](https://www.insightits.com/products/prismcortex.html)
+
+---
+
+### Production failure modes we solve
+
+If agentic systems are hitting any of these enterprise walls, PrismCortex provides native middleware abstractions:
+
+| Failure mode | What we ship |
+|--------------|--------------|
+| **Indirect prompt injection** | Sanitize retrieved payloads before they reach the LLM — `prismcortex.sanitizer` |
+| **Stale policy invalidation** | Bitemporal state separates event time from ingestion time — `prismcortex.determinism` |
+| **Hallucinated citations** | Entailment verifier checks claim-to-memory alignment — `prismcortex.verifier` |
+| **Numeric filter breakdown** | NL bounds (`"< 30 days"`, `"over $50k"`) → DB constraints — `prismcortex.constraints` |
+
+Also covered by the core engine: context decay / anaphora loss, multi-hop blindness, and non-reproducible replays (see below).
+
+---
+
+### Enterprise services & commercial support
+
+Building high-risk agent workflows, enterprise RAG data layers, or bitemporal compliance audits?
+
+- **Documentation & benchmarks:** [docs/USE_CASES.md](docs/USE_CASES.md) · [docs/COMPETITIVE.md](docs/COMPETITIVE.md) · [benchmarks/RESULTS.md](benchmarks/RESULTS.md)
+- **Product & pricing:** [insightits.com/products/prismcortex](https://www.insightits.com/products/prismcortex.html)
+- **Architecture & implementation consulting:** [info@insightits.com](mailto:info@insightits.com) · +1 (973) 692-6919 · [www.insightits.com](https://www.insightits.com)
 
 ---
 
@@ -39,8 +63,13 @@ and hallucination ratchets in production RAG/agent architectures.
 | **Causal graph links** | `engine.py`, `tests/test_graph_engine.py` | Extracted facts become relational edges — not isolated float arrays. |
 | **Salience & consolidation** | `salience.py`, `Memory.sleep()` | Skips low-value turns; parks uncertain facts; consolidates without dropping history. |
 | **Byte-identical replay** | content-addressed cache + `/replay_certificate` | Reproducible answer audits for SOC 2–aligned / compliance workflows. |
+| **Injection defense** | `sanitizer.py` | Strip prompt-hijack payloads from recalled context before render. |
+| **Citation check** | `verifier.py` | Non-LLM 0..1 entailment score (claim vs memory span). |
+| **NL → DB filters** | `constraints.py` | Numeric/date bounds → JSON + pgvector SQL (vendor adapters: see [ROADMAP](ROADMAP.md)). |
 
 **API surface (real):** `digest()` → graph · `recall()` → frozen answer · `sleep()` → consolidate · `explain()` → evidence.
+
+Known limits (multi-modal bytes, Pinecone/Qdrant/Milvus push-down): [ROADMAP — Post-0.4.0 edge cases](ROADMAP.md#post-040-edge-cases-future-releases).
 
 ---
 
