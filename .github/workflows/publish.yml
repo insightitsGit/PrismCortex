@@ -53,11 +53,18 @@ jobs:
             echo "prismcortex==${VERSION} not on PyPI — will publish."
           fi
 
-      # Trusted publishing — configure once at:
-      # https://pypi.org/manage/project/prismcortex/settings/publishing/
+      # Prefer repo secret PYPI_API_TOKEN; else trusted publishing (OIDC).
+      # Trusted publisher: https://pypi.org/manage/project/prismcortex/settings/publishing/
       # Owner: insightitsGit · Repo: PrismCortex · Workflow: publish.yml · Environment: pypi
-      - name: Publish to PyPI
-        if: steps.pypi.outputs.exists != 'true'
+      - name: Publish to PyPI (API token)
+        if: ${{ steps.pypi.outputs.exists != 'true' && secrets.PYPI_API_TOKEN != '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish to PyPI (trusted publishing)
+        if: ${{ steps.pypi.outputs.exists != 'true' && secrets.PYPI_API_TOKEN == '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
