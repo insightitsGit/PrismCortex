@@ -28,7 +28,7 @@
 |----------|-----|-------|
 | **GitHub repository** | https://github.com/insightitsGit/PrismCortex | **PUBLIC** since 2026-06-29 |
 | **Default branch** | `master` | |
-| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.3.0` |
+| **PyPI package** | https://pypi.org/project/prismcortex/ | `pip install prismcortex==0.4.0` |
 | **Whitepaper (repo)** | https://github.com/insightitsGit/PrismCortex/blob/master/docs/WHITEPAPER.md | |
 | **Benchmark scorecard** | https://github.com/insightitsGit/PrismCortex/blob/master/benchmarks/RESULTS.md | |
 | **OpenAPI (when server running)** | `http://<host>:8080/docs` | FastAPI auto-docs |

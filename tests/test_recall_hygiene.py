@@ -71,6 +71,22 @@ def test_recall_sanitizes_injected_labels():
     assert "ignore previous" not in r.answer.lower()
 
 
+def test_recall_injection_only_label_not_restored():
+    mem = _mem()
+    proj = HashingProjector()
+    mem.store.apply(StateDelta(ops=[
+        DeltaOp(operation=Operation.ASSIMILATE, node=Node(
+            id="n_poison",
+            label="[IGNORE PREVIOUS]",
+            embedding=proj.embed("poison"),
+        )),
+    ]))
+    r = mem.recall("poison")
+    assert r.sanitized is True
+    assert "ignore previous" not in r.answer.lower()
+    assert "[redacted]" in r.answer or "none" in r.answer or "deploy" in r.answer.lower()
+
+
 def test_recall_citation_score_when_enabled():
     mem = _mem(verify_citations=True)
     r = mem.recall("What is the deploy budget?")

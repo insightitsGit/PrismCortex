@@ -549,7 +549,9 @@ class Memory:
             result = self.sanitizer.sanitize(n.label)
             if result.redacted:
                 any_hit = True
-                nodes.append(n.model_copy(update={"label": result.text or n.label}))
+                # Never fall back to the original label — that would re-inject the payload.
+                clean = result.text.strip() if result.text else "[redacted]"
+                nodes.append(n.model_copy(update={"label": clean}))
             else:
                 nodes.append(n)
         if not any_hit:

@@ -27,6 +27,21 @@ def test_strips_dan_and_prompt_exfil():
     assert "reveal" not in r.text.lower()
 
 
+def test_benign_you_are_now_not_stripped():
+    """QA: do not false-positive on normal business phrasing."""
+    s = CorpusSanitizer()
+    text = "You are now the DBA for Postgres in us-east-1."
+    r = s.sanitize(text)
+    assert r.clean
+    assert r.text == text
+
+
+def test_injection_only_label_becomes_empty():
+    r = CorpusSanitizer().sanitize("[IGNORE PREVIOUS]")
+    assert r.redacted
+    assert r.text == ""
+
+
 def test_clean_text_unchanged():
     s = CorpusSanitizer()
     text = "Deploy budget is $40,000 in us-east-1."

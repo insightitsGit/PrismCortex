@@ -76,7 +76,8 @@ class CorpusSanitizer:
             re.compile(
                 r"\bnew\s+instructions?\s*:|"
                 r"\bfrom\s+now\s+on\s*,?\s*you\s+(?:must|will|shall)\b|"
-                r"\byou\s+are\s+now\s+(?:a|an|the)\b",
+                r"\byou\s+are\s+now\s+(?:DAN|unrestricted|jailbroken|"
+                r"an?\s+(?:AI|LLM|assistant|chatbot)\b)",
                 re.I,
             ),
             "",
