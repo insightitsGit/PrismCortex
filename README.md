@@ -19,6 +19,9 @@
 
 ---
 
+
+**Keywords:** agent memory, gist graph, bitemporal memory, citation verifier, byte-identical replay, PrismCortex, LLM memory plateau, constraint compiler for agents
+
 ### Production failure modes we solve
 
 If agentic systems are hitting any of these enterprise walls, PrismCortex provides native middleware abstractions:
@@ -228,4 +231,14 @@ Azure E2E / load driver (needs running server): `python benchmarks/driver.py` �
 
 Enterprise: [info@insightits.com](mailto:info@insightits.com) · +1 (973) 692-6919 · [Insight IT Solutions LLC](https://www.insightits.com) · [www.insightits.com](https://www.insightits.com)
 
-**Author:** Amin Parva
+**Author:** Amin Parva ([insightits.info@gmail.com](mailto:insightits.info@gmail.com))
+
+---
+
+## Links
+
+- Author: **Amin Parva** ([insightits.info@gmail.com](mailto:insightits.info@gmail.com))
+- Company: [https://www.insightits.com](https://www.insightits.com)
+- GitHub: https://github.com/insightitsGit/PrismCortex
+- PyPI: https://pypi.org/project/prismcortex/
+- Product page: https://www.insightits.com/products/prismcortex.html
